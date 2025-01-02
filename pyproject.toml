@@ -12,6 +12,7 @@ authors = [
 dependencies = [
     "battery-data-toolkit",
 	"fastapi",
+    "msgpack",
     "tqdm"
 ]
 
