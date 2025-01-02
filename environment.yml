@@ -1,0 +1,18 @@
+name: roviweb
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  # Core dependencies
+  - python==3.12.*
+  - fastapi==0.115.*
+  - python-duckdb
+
+  # Testing
+  - pytest
+  - jupyterlab
+
+  # Dependencies for projects not yet on conda
+  - pip
+  - pip:
+      - -e .[test]

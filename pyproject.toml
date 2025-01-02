@@ -1,0 +1,29 @@
+[project]
+name = "roviweb"
+version = "0.0.1"
+description = "Demonstration web service for battery health prognosis"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {file = "LICENSE"}
+keywords = ["batteries", "science", "data science"]
+authors = [
+    {name = "Logan Ward", email = "lward@anl.gov"},
+]
+dependencies = [
+    "battery-data-toolkit",
+	"fastapi",
+    "tqdm"
+]
+
+[tool.setuptools.packages.find]
+include = ["roviweb*"]
+
+[project.optional-dependencies]
+test = [
+    "flake8",
+    "pytest",
+    "pytest-cov",
+]
+
+[project.urls]
+repository = "https://github.com/rovi-org/services-demonstration"
