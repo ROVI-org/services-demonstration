@@ -47,6 +47,7 @@ async def upload_data(socket: WebSocket):
         msg = await socket.receive_json()
         if 'name' not in msg:
             await socket.send_json({'success': False, 'reason': 'Initial JSON message must contain a key "name"'})
+            return
         name = msg['name']
         await socket.send_json({'success': True, 'message': f'Preparing to receive for dataset: {name}'})
 
