@@ -4,12 +4,11 @@ from typing import Dict
 
 import duckdb
 import msgpack
-from battdat.schemas import BatteryMetadata
 from fastapi import FastAPI
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from roviweb.db import register_data_source
+from roviweb.db import register_data_source, write_record
 from roviweb.schemas import TableStats
 
 logger = logging.getLogger(__name__)
@@ -68,8 +67,16 @@ async def upload_data(socket: WebSocket):
 
         # Retrieve data
         msg = await socket.receive_bytes()
-        data = msgpack.unpackb(msg)
-        register_data_source(conn, name, data)
+        record = msgpack.unpackb(msg)
+        type_map = register_data_source(conn, name, record)
+
+        # Continue to write rows until disconnect
+        #  TODO (wardlt): Batch writes
+        while True:
+            write_record(conn, name, type_map, record)
+            msg = await socket.receive_bytes()
+            record = msgpack.unpackb(msg)
+
     except WebSocketDisconnect:
         logger.info(f'Disconnected from client at {socket.client.host}')
 
@@ -81,8 +88,12 @@ def get_db_stats() -> Dict[str, TableStats]:
     # Get the stats for each dataset
     output = {}
     for name in known_datasets:
-        stats = conn.execute('SELECT * FROM duckdb_columns() WHERE table_name = ?', [name]).df()
-        columns = dict(zip(stats['column_name'], stats['data_type']))
-        output[name] = TableStats(columns=columns)
+        # Get size information
+        rows = conn.execute('SELECT estimated_size FROM duckdb_tables() WHERE table_name = ?', [name]).fetchone()[0]
+
+        # Get column information
+        columns = conn.execute('SELECT * FROM duckdb_columns() WHERE table_name = ?', [name]).df()
+        columns = dict(zip(columns['column_name'], columns['data_type']))
+        output[name] = TableStats(rows=rows, columns=columns)
 
     return output
