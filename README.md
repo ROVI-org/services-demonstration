@@ -5,6 +5,8 @@
 
 A demonstration pipeline that starts with uploading data and ends with a system health dashboard.
 
+Learn how to use the service via the documentation [./docs/](./docs/)
+
 ## Installation
 
 Build the environment using Anaconda
