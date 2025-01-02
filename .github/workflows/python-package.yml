@@ -1,0 +1,40 @@
+name: Python Package
+
+on:
+  push:
+  pull_request:
+
+defaults:
+  run:
+    shell: bash -el {0}  # Lets conda work
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+            environment-file: environment.yml
+            activate-environment: test
+            auto-activate-base: true
+            auto-update-conda: false
+            remove-profiles: true
+            architecture: x64
+            clean-patched-environment-file: true
+            run-post: true
+            use-mamba: true
+            miniforge-version: latest
+      - name: Lint with flake8
+        run: |
+          flake8 roviweb/ tests
+      - name: Test with pytest
+        run: |
+          pytest --cov=roviweb tests
+      - name: Coveralls
+        run: |
+          pip install coveralls
+          coveralls --service=github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
