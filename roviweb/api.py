@@ -1,14 +1,18 @@
 """Define the web application"""
 import logging
-from typing import Dict
+import shutil
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Dict, Annotated
 
 import duckdb
 import msgpack
-from fastapi import FastAPI
+from fastapi import FastAPI, Form, UploadFile
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from roviweb.db import register_data_source, write_record
+from roviweb.online import load_estimator, EstimatorHolder
 from roviweb.schemas import TableStats
 
 logger = logging.getLogger(__name__)
@@ -24,7 +28,9 @@ app.add_middleware(
 # Make a DuckDB database connection
 conn = duckdb.connect(":memory:")  # For now, just memory. No persistence between runs
 
+# Holding the dataset and estimator names
 known_datasets = set()
+estimators: dict[str, EstimatorHolder] = {}
 
 
 @app.websocket('/upload')
@@ -97,3 +103,33 @@ def get_db_stats() -> Dict[str, TableStats]:
         output[name] = TableStats(rows=rows, columns=columns)
 
     return output
+
+
+@app.post('/online/register')
+async def register_estimator(name: Annotated[str, Form()],
+                             definition: Annotated[str, Form()],
+                             valid_time: float = 0.,
+                             files: list[UploadFile] = ()) -> str:
+    """Register an online estimator to be used for a specific data source
+
+    Args:
+        name: Name of the data source
+        definition: Contents of a Python file which builds the model
+        valid_time: Time at which the state of the estimator is valid
+        files: Any files associated with the data
+    """
+
+    # Write the files to a temporary directory
+    with TemporaryDirectory() as td:
+        td = Path(td)
+        for file in files:
+            with open(td / file.filename, 'wb') as fo:
+                shutil.copyfileobj(file.file, fo)
+
+        # Execute the function to create the estimator
+        estimator = load_estimator(definition, working_dir=td)
+
+        # Add it to the estimator collection
+        estimators[name] = EstimatorHolder(estimator=estimator, last_time=valid_time)
+
+    return estimator.__class__.__name__
