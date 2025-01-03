@@ -19,3 +19,12 @@ def test_load():
 
     est = load_estimator(_est_file_path.read_text(), working_dir=_est_file_path.parent)
     assert isinstance(est, JointEstimator)
+
+
+def test_upload(client):
+    """Test a successful upload"""
+    with open(_est_file_path.parent / 'initial-asoh.json', 'rb') as rb:
+        result = client.post('/online/register',
+                             data={'name': 'module', 'definition': _est_file_path.read_text()},
+                             files=[('files', ('initial-asoh.json', rb))])
+    assert result.status_code == 200, result.text

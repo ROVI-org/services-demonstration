@@ -1,4 +1,5 @@
 """Functions for managing online estimation"""
+import dataclasses
 from contextlib import chdir
 from pathlib import Path
 
@@ -25,3 +26,13 @@ def load_estimator(text: str, variable_name: str = 'estimator', working_dir: Pat
             raise ValueError(f'Variable "{variable_name}" not found in')
 
         return spec_ns[variable_name]
+
+
+@dataclasses.dataclass
+class EstimatorHolder:
+    """Class which holds the estimator and data about its progress"""
+
+    estimator: OnlineEstimator
+    """Estimator being propagated"""
+    last_time: float
+    """Test time at which the states are estimated"""

@@ -13,6 +13,7 @@ dependencies = [
     "battery-data-toolkit",
 	"fastapi",
     "msgpack",
+    "python-multipart",
     "moirae@git+https://github.com/ROVI-org/auto-soh.git",
     "tqdm"
 ]
