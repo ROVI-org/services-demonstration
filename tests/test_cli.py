@@ -51,6 +51,8 @@ def test_upload(file_path, capsys, example_h5):
     main([
         'upload', 'module',
         '--max-to-upload', '4',
+        '--clock-factor', '1e6',
+        '--report-freq', '2',
         str(example_h5)
     ])
 
