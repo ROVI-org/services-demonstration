@@ -144,4 +144,17 @@ async def register_estimator(name: Annotated[str, Form()],
 
 @app.get('/online/status')
 async def status_estimator() -> dict[str, EstimatorStatus]:
-    """"""
+    """Get the states of each estimator being evaluated"""
+
+    output = {}
+    for name, holder in estimators.items():
+        names = holder.estimator.state_names
+        estimated_state = holder.estimator.state
+
+        output[name] = EstimatorStatus(
+            state_names=list(names),
+            latest_time=holder.last_time,
+            mean=estimated_state.get_mean().tolist(),
+            covariance=estimated_state.get_covariance().tolist(),
+        )
+    return output

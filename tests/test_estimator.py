@@ -51,3 +51,9 @@ def test_several_steps(client, example_h5):
         for i in range(4):
             row = dataset.tables['raw_data'].iloc[i]
             websocket.send_bytes(msgpack.packb(row.to_dict()))
+
+    # Pull the estimator status
+    result = client.get('/online/status')
+    assert result.status_code == 200, result.text
+    state = result.json()
+    assert 'module' in state
