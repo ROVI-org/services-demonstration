@@ -11,6 +11,11 @@ _file_path = Path(__file__).parent / 'files'
 
 
 @fixture()
+def file_path() -> Path:
+    return _file_path
+
+
+@fixture()
 def client():
     return TestClient(app)
 

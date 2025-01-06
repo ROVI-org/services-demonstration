@@ -57,3 +57,4 @@ def test_several_steps(client, example_h5):
     assert result.status_code == 200, result.text
     state = result.json()
     assert 'module' in state
+    assert state['module']['latest_time'] == row['test_time']
