@@ -32,3 +32,6 @@ test = [
 
 [project.urls]
 repository = "https://github.com/rovi-org/services-demonstration"
+
+[project.scripts]
+rovicli = "roviweb.cli:main"
