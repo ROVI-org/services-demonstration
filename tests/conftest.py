@@ -5,7 +5,7 @@ import requests
 from pytest import fixture
 from fastapi.testclient import TestClient
 
-from roviweb.api import app
+from roviweb.api import app, conn
 
 _file_path = Path(__file__).parent / 'files'
 
@@ -23,3 +23,8 @@ def example_h5():
         with h5_path.open('wb') as fp:
             copyfileobj(requests.get(url, stream=True).raw, fp)
     return h5_path
+
+
+@fixture(autouse=True)
+def clear_db():
+    conn.execute('DROP TABLE IF EXISTS module')
