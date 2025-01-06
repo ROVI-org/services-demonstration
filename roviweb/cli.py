@@ -1,8 +1,11 @@
 """Command line utility for interacting with the web service"""
+import time
 from argparse import ArgumentParser
 from pathlib import Path
 
 import msgpack
+import numpy as np
+import pandas as pd
 from battdat.data import BatteryDataset
 from pydantic import TypeAdapter
 from httpx_ws import connect_ws
@@ -75,10 +78,35 @@ def upload_data(args):
 
         # Start sending data
         dataset = BatteryDataset.from_hdf(args.path)
+        print(f'Beginning to stream data for {args.name}')
+        last_time = None
         for i, row in dataset.tables['raw_data'].iterrows():
+            # Pause to simulate data being acquired at known rates
+            if args.clock_factor is not None and last_time is not None:
+                sleep_time = (row['test_time'] - last_time) / args.clock_factor
+                time.sleep(sleep_time)
+            last_time = row['test_time']
+
+            # Send a row
             if args.max_to_upload is not None and i >= args.max_to_upload:
                 break
             ws.send_bytes(msgpack.dumps(row.to_dict()))
+
+            # Print estimator status if we hit a marker
+            if args.report_freq is not None and int(str(i)) % args.report_freq == 0:
+                # Pull status from the service
+                est_status = httpx.get(f'{args.url}/online/status').json()
+                if args.name not in est_status:
+                    continue
+                est_status = EstimatorStatus.validate(est_status[args.name])
+
+                print(f'Estimator status at test_time: {est_status.latest_time:.1f} s:')
+                state = pd.DataFrame({
+                    'name': est_status.state_names,
+                    'mean': est_status.mean,
+                    'std.': np.sqrt(np.diag(est_status.covariance))
+                })
+                print(state.to_string(index=False))
 
 
 def main(args=None):
@@ -86,7 +114,7 @@ def main(args=None):
 
     # Make the argument parser with one subparser for each action
     parser = ArgumentParser()
-    parser.add_argument('--url', default='http://127.0.0.1', help='URL for the web service')
+    parser.add_argument('--url', default='http://127.0.0.1:8000', help='URL for the web service')
     subparsers = parser.add_subparsers(dest='action')
 
     subparser = subparsers.add_parser('status', help='Get application status')
@@ -100,7 +128,13 @@ def main(args=None):
     subparser.set_defaults(action=upload_estimator)
 
     subparser = subparsers.add_parser('upload', help='Upload data from a battdat HDF5 file')
-    subparser.add_argument('--max-to-upload', help='Maximum number of rows to upload', default=None, type=int)
+    subparser.add_argument('--max-to-upload', help='Maximum number of rows to upload',
+                           default=None, type=int)
+    subparser.add_argument('--report-freq', help='After how many data uploads to print estimator state',
+                           default=None, type=int)
+    subparser.add_argument('--clock-factor',
+                           help='How much to accelerate uploading compared to rate data were collected.'
+                                ' Uploads as fast as possible as the default', default=None, type=float)
     subparser.add_argument('name', help='Name of the data source to create')
     subparser.add_argument('path', help='Path to the HDF5 file')
     subparser.set_defaults(action=upload_data)
