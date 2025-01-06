@@ -19,6 +19,13 @@ def mock_web_service(mocker, client):
             partial(_call_test, method)
         )
 
+    # Wrap the websocket function
+    def _call_ws(url):
+        path = parse.urlparse(url)
+        return client.websocket_connect(path.path)
+
+    mocker.patch('roviweb.cli.connect_ws', _call_ws)
+
 
 def test_help(capsys):
     with raises(SystemExit):
@@ -27,7 +34,7 @@ def test_help(capsys):
     assert 'Register a state estimator' in captured.out
 
 
-def test_upload(file_path, capsys):
+def test_upload(file_path, capsys, example_h5):
     # Send a model in
     main([
         'register', 'module',
@@ -39,6 +46,17 @@ def test_upload(file_path, capsys):
     # Check if it's available
     main(['status'])
     assert 'Estimator for module:' in capsys.readouterr().out
+
+    # Send 4 steps of data
+    main([
+        'upload', 'module',
+        '--max-to-upload', '4',
+        str(example_h5)
+    ])
+
+    # Print the status again
+    main(['status'])
+    assert '  module: 4' in capsys.readouterr().out
 
 
 def test_status(capsys):

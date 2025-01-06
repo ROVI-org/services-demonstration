@@ -2,10 +2,13 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
+import msgpack
+from battdat.data import BatteryDataset
 from pydantic import TypeAdapter
+from httpx_ws import connect_ws
 import httpx
 
-from roviweb.schemas import EstimatorStatus
+from roviweb.schemas import EstimatorStatus, TableStats
 
 
 def upload_estimator(args):
@@ -42,9 +45,13 @@ def get_status(args):
         raise ValueError(f'Failed with status_code={response.status_code}. {response.text}')
 
     # Print the results
-    result = response.json()
+    result: dict[str, TableStats] = TypeAdapter(dict[str, TableStats]).validate_python(response.json())
     if len(result) == 0:
         print('No databases available')
+    else:
+        print('Database sizes:')
+        for name, info in result.items():
+            print(f'  {name}: {info.rows}')
 
     # Query the available estimators
     response = httpx.get(f'{args.url}/online/status')
@@ -56,6 +63,22 @@ def get_status(args):
     for name, info in result.items():
         print(f'Estimator for {name}:')
         print(f'  Latest time: {info.latest_time:.2f} s')
+
+
+def upload_data(args):
+    with connect_ws(f'{args.url}/upload') as ws:
+        # Initialize connection
+        ws.send_json({'name': args.name})
+        msg = ws.receive_json()
+        if not msg['success']:
+            raise ValueError(f'Failed to start upload: {msg["reason"]}')
+
+        # Start sending data
+        dataset = BatteryDataset.from_hdf(args.path)
+        for i, row in dataset.tables['raw_data'].iterrows():
+            if args.max_to_upload is not None and i >= args.max_to_upload:
+                break
+            ws.send_bytes(msgpack.dumps(row.to_dict()))
 
 
 def main(args=None):
@@ -75,6 +98,12 @@ def main(args=None):
     subparser.add_argument('context_file', nargs='*', help='Paths to additional files needed for estimator definition')
     subparser.add_argument('--valid-time', default=0., type=float, help='Test time at which estimator is valid')
     subparser.set_defaults(action=upload_estimator)
+
+    subparser = subparsers.add_parser('upload', help='Upload data from a battdat HDF5 file')
+    subparser.add_argument('--max-to-upload', help='Maximum number of rows to upload', default=None, type=int)
+    subparser.add_argument('name', help='Name of the data source to create')
+    subparser.add_argument('path', help='Path to the HDF5 file')
+    subparser.set_defaults(action=upload_data)
 
     args = parser.parse_args(args)
 

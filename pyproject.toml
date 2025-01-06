@@ -15,6 +15,7 @@ dependencies = [
     "msgpack",
     "python-multipart",
     "moirae@git+https://github.com/ROVI-org/auto-soh.git",
+    "httpx-ws",
     "tqdm"
 ]
 

@@ -5,7 +5,7 @@ import requests
 from pytest import fixture
 from fastapi.testclient import TestClient
 
-from roviweb.api import app, conn, estimators
+from roviweb.api import app, conn, estimators, known_datasets
 
 _file_path = Path(__file__).parent / 'files'
 
@@ -34,3 +34,4 @@ def example_h5():
 def reset_status():
     conn.execute('DROP TABLE IF EXISTS module')
     estimators.clear()
+    known_datasets.clear()
