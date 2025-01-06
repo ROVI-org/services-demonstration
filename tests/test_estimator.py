@@ -1,11 +1,20 @@
 from pathlib import Path
 
+from battdat.data import BatteryDataset
 from moirae.estimators.online.joint import JointEstimator
 from pytest import raises
+import msgpack
 
 from roviweb.online import load_estimator
 
 _est_file_path = Path(__file__).parent / 'files' / 'example-estimator.py'
+
+
+def upload_estimator(client):
+    with open(_est_file_path.parent / 'initial-asoh.json', 'rb') as rb:
+        return client.post('/online/register',
+                           data={'name': 'module', 'definition': _est_file_path.read_text()},
+                           files=[('files', ('initial-asoh.json', rb))])
 
 
 def test_load():
@@ -23,8 +32,22 @@ def test_load():
 
 def test_upload(client):
     """Test a successful upload"""
-    with open(_est_file_path.parent / 'initial-asoh.json', 'rb') as rb:
-        result = client.post('/online/register',
-                             data={'name': 'module', 'definition': _est_file_path.read_text()},
-                             files=[('files', ('initial-asoh.json', rb))])
+    result = upload_estimator(client)
     assert result.status_code == 200, result.text
+
+
+def test_several_steps(client, example_h5):
+    # Make the client and load dataset
+    upload_estimator(client)
+    dataset = BatteryDataset.from_hdf(example_h5)
+
+    # Upload a few steps of cycling data
+    with client.websocket_connect("/upload") as websocket:
+        websocket.send_json({"name": "module"})
+        msg = websocket.receive_json()
+        assert msg['success'] and msg['message'].endswith('module')
+
+        # Send 4 data points
+        for i in range(4):
+            row = dataset.tables['raw_data'].iloc[i]
+            websocket.send_bytes(msgpack.packb(row.to_dict()))

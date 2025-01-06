@@ -3,7 +3,11 @@ import dataclasses
 from contextlib import chdir
 from pathlib import Path
 
+from moirae.interface import row_to_inputs
 from moirae.estimators.online import OnlineEstimator
+from moirae.models.base import InputQuantities
+
+from roviweb.db import RecordType
 
 
 def load_estimator(text: str, variable_name: str = 'estimator', working_dir: Path | None = None) -> OnlineEstimator:
@@ -36,3 +40,23 @@ class EstimatorHolder:
     """Estimator being propagated"""
     last_time: float
     """Test time at which the states are estimated"""
+    _last_inputs: InputQuantities | None = None
+    """Inputs from the last step"""
+
+    def step(self, record: RecordType):
+        """Step forward the estimator if possible"""
+
+        # Do nothing if the records are before the estimator's timestep
+        if record['test_time'] < self.last_time:
+            return
+
+        # Convert the record to inputs
+        inputs, outputs = row_to_inputs(record)
+
+        # Step if we have the previous step
+        if self._last_inputs is not None:
+            self.estimator.step(inputs, outputs)
+
+        # Update state
+        self._last_inputs = inputs
+        self.last_time = record['test_time']

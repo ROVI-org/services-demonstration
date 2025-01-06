@@ -79,7 +79,14 @@ async def upload_data(socket: WebSocket):
         # Continue to write rows until disconnect
         #  TODO (wardlt): Batch writes
         while True:
+            # Increment
+            if (holder := estimators.get(name)) is not None:
+                holder.step(record)
+
+            # Write to database
             write_record(conn, name, type_map, record)
+
+            # Get next step
             msg = await socket.receive_bytes()
             record = msgpack.unpackb(msg)
 
