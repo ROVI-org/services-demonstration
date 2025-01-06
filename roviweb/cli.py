@@ -85,6 +85,7 @@ def upload_data(args):
             if args.clock_factor is not None and last_time is not None:
                 sleep_time = (row['test_time'] - last_time) / args.clock_factor
                 time.sleep(sleep_time)
+            last_time = row['test_time']
 
             # Send a row
             if args.max_to_upload is not None and i >= args.max_to_upload:
