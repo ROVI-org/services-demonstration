@@ -1,15 +1,19 @@
 """Define the web application"""
 import logging
-from typing import Dict
+import shutil
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Dict, Annotated
 
 import duckdb
 import msgpack
-from fastapi import FastAPI
+from fastapi import FastAPI, Form, UploadFile
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from roviweb.db import register_data_source, write_record
-from roviweb.schemas import TableStats
+from roviweb.online import load_estimator, EstimatorHolder
+from roviweb.schemas import TableStats, EstimatorStatus
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +28,9 @@ app.add_middleware(
 # Make a DuckDB database connection
 conn = duckdb.connect(":memory:")  # For now, just memory. No persistence between runs
 
+# Holding the dataset and estimator names
 known_datasets = set()
+estimators: dict[str, EstimatorHolder] = {}
 
 
 @app.websocket('/upload')
@@ -73,7 +79,14 @@ async def upload_data(socket: WebSocket):
         # Continue to write rows until disconnect
         #  TODO (wardlt): Batch writes
         while True:
+            # Increment
+            if (holder := estimators.get(name)) is not None:
+                holder.step(record)
+
+            # Write to database
             write_record(conn, name, type_map, record)
+
+            # Get next step
             msg = await socket.receive_bytes()
             record = msgpack.unpackb(msg)
 
@@ -96,4 +109,52 @@ def get_db_stats() -> Dict[str, TableStats]:
         columns = dict(zip(columns['column_name'], columns['data_type']))
         output[name] = TableStats(rows=rows, columns=columns)
 
+    return output
+
+
+@app.post('/online/register')
+async def register_estimator(name: Annotated[str, Form()],
+                             definition: Annotated[str, Form()],
+                             valid_time: float = 0.,
+                             files: list[UploadFile] = ()) -> str:
+    """Register an online estimator to be used for a specific data source
+
+    Args:
+        name: Name of the data source
+        definition: Contents of a Python file which builds the model
+        valid_time: Time at which the state of the estimator is valid
+        files: Any files associated with the data
+    """
+
+    # Write the files to a temporary directory
+    with TemporaryDirectory() as td:
+        td = Path(td)
+        for file in files:
+            with open(td / file.filename, 'wb') as fo:
+                shutil.copyfileobj(file.file, fo)
+
+        # Execute the function to create the estimator
+        estimator = load_estimator(definition, working_dir=td)
+
+        # Add it to the estimator collection
+        estimators[name] = EstimatorHolder(estimator=estimator, last_time=valid_time)
+
+    return estimator.__class__.__name__
+
+
+@app.get('/online/status')
+async def status_estimator() -> dict[str, EstimatorStatus]:
+    """Get the states of each estimator being evaluated"""
+
+    output = {}
+    for name, holder in estimators.items():
+        names = holder.estimator.state_names
+        estimated_state = holder.estimator.state
+
+        output[name] = EstimatorStatus(
+            state_names=list(names),
+            latest_time=holder.last_time,
+            mean=estimated_state.get_mean().tolist(),
+            covariance=estimated_state.get_covariance().tolist(),
+        )
     return output

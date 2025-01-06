@@ -32,14 +32,10 @@ Supply an estimator by posting...
 - A Python file which creates a [Moirae `OnlineEstimator`](https://rovi-org.github.io/auto-soh/estimators/index.html#online-estimators)
 and the name of a module (to be defined later).
 
-```python
-# Example code TBD
-```
-
 Register by calling a CLI tool which POSTs a request to the proper URL.
 
 ```commandline
-rovicli register module 0. estimator.py
+rovicli register module estimator.py initial-asoh.json
 ```
 
 The registration process will create a callback that updates the estimator each
@@ -55,7 +51,7 @@ Sending the dataset will create a new table in an SQL database. Columns will be 
 Use an API tool provided with this web service to upload.
 
 ```commandline
-rovicli stream module.h5
+rovicli upload module module.h5
 ```
 
 The CLI will send data points to the web service at a rate proportional to how they were initially collected.

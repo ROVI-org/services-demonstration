@@ -3,7 +3,7 @@ name = "roviweb"
 version = "0.0.1"
 description = "Demonstration web service for battery health prognosis"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = {file = "LICENSE"}
 keywords = ["batteries", "science", "data science"]
 authors = [
@@ -13,6 +13,9 @@ dependencies = [
     "battery-data-toolkit",
 	"fastapi",
     "msgpack",
+    "python-multipart",
+    "moirae@git+https://github.com/ROVI-org/auto-soh.git",
+    "httpx-ws",
     "tqdm"
 ]
 
@@ -24,7 +27,11 @@ test = [
     "flake8",
     "pytest",
     "pytest-cov",
+    "pytest-mock"
 ]
 
 [project.urls]
 repository = "https://github.com/rovi-org/services-demonstration"
+
+[project.scripts]
+rovicli = "roviweb.cli:main"
