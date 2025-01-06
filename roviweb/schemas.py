@@ -9,3 +9,10 @@ class TableStats(BaseModel):
     """Number of rows in the database"""
     columns: dict[str, str]
     """Names and types of the columns"""
+
+
+def EstimatorStatus(BaseModel):
+    """Condition and status of a state estimator"""
+
+    state_names: list[str]
+    """Names of each of the state"""

@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from roviweb.db import register_data_source, write_record
 from roviweb.online import load_estimator, EstimatorHolder
-from roviweb.schemas import TableStats
+from roviweb.schemas import TableStats, EstimatorStatus
 
 logger = logging.getLogger(__name__)
 
@@ -140,3 +140,8 @@ async def register_estimator(name: Annotated[str, Form()],
         estimators[name] = EstimatorHolder(estimator=estimator, last_time=valid_time)
 
     return estimator.__class__.__name__
+
+
+@app.get('/online/status')
+async def status_estimator() -> dict[str, EstimatorStatus]:
+    """"""
