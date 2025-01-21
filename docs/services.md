@@ -9,19 +9,20 @@ The following sections detail the actions which we expected the web service to p
 
 ## Data Upload
 
-The `/upload` endpoint opens a web socket which receives a stream of operational data.
+The `/db/upload/<name>` endpoint opens a web socket which receives a stream of operational data
+for a specific battery.
 Each message is a single timestamp of data packed in a compact, binary format via msgpack.
 
 The web services creates a new SQL table based on the format of the first message.
 
-For the first and all subsequent messages
+Upon receipt of a message, the web services
 
 1. Stores the data to the SQL table
 2. Uses the record to update the state estimate
 
 ## DB Status Query
 
-The `/dbstats` retrieves basic information about the data stored in SQL.
+The `/db/stats` retrieves basic information about the data stored in SQL.
 The endpoint returns a record for each table describing:
 
 - The number of rows
