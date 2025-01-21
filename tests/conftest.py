@@ -32,6 +32,8 @@ def example_h5():
 
 @fixture(autouse=True)
 def reset_status():
-    conn.execute('DROP TABLE IF EXISTS module')
+    for name in known_datasets:
+        conn.execute(f'DROP TABLE IF EXISTS {name}')
+        conn.execute(f'DROP TABLE IF EXISTS {name}_estimates')
     estimators.clear()
     known_datasets.clear()

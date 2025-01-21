@@ -62,10 +62,20 @@ async def upload_data(name: str, socket: WebSocket):
 
         # Continue to write rows until disconnect
         #  TODO (wardlt): Batch writes
+        state_db_ready = False
         while True:
-            # Increment
+            # Increment and store estimator
             if (holder := estimators.get(name)) is not None:
                 holder.step(record)
+                state_record = {'test_time': record['test_time']}
+                for vname, val in zip(holder.estimator.state_names, holder.estimator.state.get_mean()):
+                    state_record[vname.replace(".", "__").replace("[", "").replace("]", "")] = val
+
+                db_name = f'{name}_estimates'
+                if not state_db_ready:
+                    state_db_map = register_data_source(conn, db_name, state_record)
+                    state_db_ready = True
+                write_record(conn, db_name, state_db_map, state_record)
 
             # Write to database
             write_record(conn, name, type_map, record)
