@@ -2,6 +2,7 @@
 import logging
 import shutil
 from pathlib import Path
+from datetime import datetime
 from tempfile import TemporaryDirectory
 from typing import Dict, Annotated
 
@@ -33,23 +34,11 @@ known_datasets = set()
 estimators: dict[str, EstimatorHolder] = {}
 
 
-@app.websocket('/upload')
-async def upload_data(socket: WebSocket):
+@app.websocket('/db/upload/{name}')
+async def upload_data(name: str, socket: WebSocket):
     """Open a socket connection for writing data to the database
 
-    The first message into the websocket is a JSON document including the name of the dataset to write to.
-
-    .. code-block: json
-
-        {"name": "module_1"}
-
-    The websocket will respond if it is ready to receive data and then continue without replying to the user.
-
-    .. code-block: json
-
-       {"success": true, "message": "Preparing to receive for dataset: module_1"}
-
-    The subsequent messages are the data to be stored in `msgpack <https://pypi.org/project/msgpack/>`_ format.
+    Messages are the data to be stored in `msgpack <https://pypi.org/project/msgpack/>`_ format.
     The web service will add a timestamp and then store the data as-is.
 
     Args:
@@ -62,18 +51,13 @@ async def upload_data(socket: WebSocket):
 
     try:
         # Retrieve the name of the dataset
-        msg = await socket.receive_json()
-        if 'name' not in msg:
-            await socket.send_json({'success': False, 'reason': 'Initial JSON message must contain a key "name"'})
-            return
-        name = msg['name']
         known_datasets.add(name)
-        await socket.send_json({'success': True, 'message': f'Preparing to receive for dataset: {name}'})
         logger.info(f'Ready to receive data for {name}')
 
         # Retrieve data
         msg = await socket.receive_bytes()
         record = msgpack.unpackb(msg)
+        record['received'] = datetime.now().timestamp()
         type_map = register_data_source(conn, name, record)
 
         # Continue to write rows until disconnect
@@ -89,12 +73,12 @@ async def upload_data(socket: WebSocket):
             # Get next step
             msg = await socket.receive_bytes()
             record = msgpack.unpackb(msg)
-
+            record['received'] = datetime.now().timestamp()
     except WebSocketDisconnect:
         logger.info(f'Disconnected from client at {socket.client.host}')
 
 
-@app.get('/dbstats')
+@app.get('/db/stats')
 def get_db_stats() -> Dict[str, TableStats]:
     """Retrieve information about what data are stored"""
 

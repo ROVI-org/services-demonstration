@@ -42,11 +42,7 @@ def test_several_steps(client, example_h5):
     dataset = BatteryDataset.from_hdf(example_h5)
 
     # Upload a few steps of cycling data
-    with client.websocket_connect("/upload") as websocket:
-        websocket.send_json({"name": "module"})
-        msg = websocket.receive_json()
-        assert msg['success'] and msg['message'].endswith('module')
-
+    with client.websocket_connect("/db/upload/module") as websocket:
         # Send 4 data points
         for i in range(4):
             row = dataset.tables['raw_data'].iloc[i]

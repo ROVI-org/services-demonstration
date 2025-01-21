@@ -43,7 +43,7 @@ def upload_estimator(args):
 
 def get_status(args):
     # Pull database status from the web service
-    response = httpx.get(f'{args.url}/dbstats')
+    response = httpx.get(f'{args.url}/db/stats')
     if response.status_code != 200:
         raise ValueError(f'Failed with status_code={response.status_code}. {response.text}')
 
@@ -69,13 +69,7 @@ def get_status(args):
 
 
 def upload_data(args):
-    with connect_ws(f'{args.url}/upload') as ws:
-        # Initialize connection
-        ws.send_json({'name': args.name})
-        msg = ws.receive_json()
-        if not msg['success']:
-            raise ValueError(f'Failed to start upload: {msg["reason"]}')
-
+    with connect_ws(f'{args.url}/db/upload/{args.name}') as ws:
         # Start sending data
         dataset = BatteryDataset.from_hdf(args.path)
         print(f'Beginning to stream data for {args.name}')
