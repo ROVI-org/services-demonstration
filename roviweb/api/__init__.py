@@ -6,7 +6,6 @@ from datetime import datetime
 from tempfile import TemporaryDirectory
 from typing import Dict, Annotated
 
-import duckdb
 import msgpack
 from fastapi import FastAPI, Form, UploadFile
 from fastapi.websockets import WebSocket, WebSocketDisconnect
@@ -15,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from roviweb.db import register_data_source, write_record
 from roviweb.online import load_estimator, EstimatorHolder
 from roviweb.schemas import TableStats, EstimatorStatus
+from . import state
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +25,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"]
 )
-
-# Make a DuckDB database connection
-conn = duckdb.connect(":memory:")  # For now, just memory. No persistence between runs
-
-# Holding the dataset and estimator names
-known_datasets = set()
-estimators: dict[str, EstimatorHolder] = {}
 
 
 @app.websocket('/db/upload/{name}')
@@ -51,21 +44,21 @@ async def upload_data(name: str, socket: WebSocket):
 
     try:
         # Retrieve the name of the dataset
-        known_datasets.add(name)
+        state.known_datasets.add(name)
         logger.info(f'Ready to receive data for {name}')
 
         # Retrieve data
         msg = await socket.receive_bytes()
         record = msgpack.unpackb(msg)
         record['received'] = datetime.now().timestamp()
-        type_map = register_data_source(conn, name, record)
+        type_map = register_data_source(state.conn, name, record)
 
         # Continue to write rows until disconnect
         #  TODO (wardlt): Batch writes
         state_db_ready = False
         while True:
             # Increment and store estimator
-            if (holder := estimators.get(name)) is not None:
+            if (holder := state.estimators.get(name)) is not None:
                 holder.step(record)
                 state_record = {'test_time': record['test_time']}
                 for vname, val in zip(holder.estimator.state_names, holder.estimator.state.get_mean()):
@@ -73,12 +66,12 @@ async def upload_data(name: str, socket: WebSocket):
 
                 db_name = f'{name}_estimates'
                 if not state_db_ready:
-                    state_db_map = register_data_source(conn, db_name, state_record)
+                    state_db_map = register_data_source(state.conn, db_name, state_record)
                     state_db_ready = True
-                write_record(conn, db_name, state_db_map, state_record)
+                write_record(state.conn, db_name, state_db_map, state_record)
 
             # Write to database
-            write_record(conn, name, type_map, record)
+            write_record(state.conn, name, type_map, record)
 
             # Get next step
             msg = await socket.receive_bytes()
@@ -94,12 +87,12 @@ def get_db_stats() -> Dict[str, TableStats]:
 
     # Get the stats for each dataset
     output = {}
-    for name in known_datasets:
+    for name in state.known_datasets:
         # Get size information
-        rows = conn.execute('SELECT estimated_size FROM duckdb_tables() WHERE table_name = ?', [name]).fetchone()[0]
+        rows = state.conn.execute('SELECT estimated_size FROM duckdb_tables() WHERE table_name = ?', [name]).fetchone()[0]
 
         # Get column information
-        columns = conn.execute('SELECT * FROM duckdb_columns() WHERE table_name = ?', [name]).df()
+        columns = state.conn.execute('SELECT * FROM duckdb_columns() WHERE table_name = ?', [name]).df()
         columns = dict(zip(columns['column_name'], columns['data_type']))
         output[name] = TableStats(rows=rows, columns=columns)
 
@@ -131,7 +124,7 @@ async def register_estimator(name: Annotated[str, Form()],
         estimator = load_estimator(definition, working_dir=td)
 
         # Add it to the estimator collection
-        estimators[name] = EstimatorHolder(estimator=estimator, last_time=valid_time)
+        state.estimators[name] = EstimatorHolder(estimator=estimator, last_time=valid_time)
 
     return estimator.__class__.__name__
 
@@ -141,7 +134,7 @@ async def status_estimator() -> dict[str, EstimatorStatus]:
     """Get the states of each estimator being evaluated"""
 
     output = {}
-    for name, holder in estimators.items():
+    for name, holder in state.estimators.items():
         names = holder.estimator.state_names
         estimated_state = holder.estimator.state
 

@@ -5,7 +5,8 @@ import requests
 from pytest import fixture
 from fastapi.testclient import TestClient
 
-from roviweb.api import app, conn, estimators, known_datasets
+from roviweb.api import app
+from roviweb.api.state import conn, estimators, known_datasets
 
 _file_path = Path(__file__).parent / 'files'
 
