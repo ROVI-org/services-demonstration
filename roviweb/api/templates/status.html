@@ -1,0 +1,22 @@
+{# Template for a Battery Status Page #}
+{% extends "layout.html" %}
+{% block content %}
+<h1>Status for <code>{{ name }}</code></h1>
+
+<p>The battery status information for a cell named "{{name}}".</p>
+
+<h2>System Health</h2>
+
+<p>A picture of the current health and the history over time.</p>
+
+<h3>Current Status</h3>
+
+<p>Current estimates for each parameter</p>
+
+{{ table.to_html(col_space=(20, 20, 20), classes='table-sm', index=False, justify='center') | safe }}
+
+<h2>Prognosis</h2>
+
+TBD
+
+{% endblock %}
