@@ -1,8 +1,10 @@
 """Define the web application"""
+from pathlib import Path
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.templating import Jinja2Templates
 
 from . import db, online
 
@@ -17,3 +19,11 @@ app.add_middleware(
 )
 app.include_router(db.router)
 app.include_router(online.router)
+
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+
+@app.get("/")
+async def home(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="home.html"
+    )
