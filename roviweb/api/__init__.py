@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import state, db, online
+from . import db, online
 
 logger = logging.getLogger(__name__)
 

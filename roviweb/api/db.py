@@ -78,7 +78,9 @@ def get_db_stats() -> Dict[str, TableStats]:
     output = {}
     for name in state.known_datasets:
         # Get size information
-        rows = state.conn.execute('SELECT estimated_size FROM duckdb_tables() WHERE table_name = ?', [name]).fetchone()[0]
+        rows = state.conn.execute(
+            'SELECT estimated_size FROM duckdb_tables() WHERE table_name = ?', [name]
+        ).fetchone()[0]
 
         # Get column information
         columns = state.conn.execute('SELECT * FROM duckdb_columns() WHERE table_name = ?', [name]).df()
