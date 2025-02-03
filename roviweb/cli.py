@@ -92,7 +92,7 @@ def upload_data(args):
                 est_status = httpx.get(f'{args.url}/online/status').json()
                 if args.name not in est_status:
                     continue
-                est_status = EstimatorStatus.validate(est_status[args.name])
+                est_status = EstimatorStatus.model_validate(est_status[args.name])
 
                 print(f'Estimator status at test_time: {est_status.latest_time:.1f} s:')
                 state = pd.DataFrame({
