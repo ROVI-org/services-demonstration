@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from battdat.data import BatteryDataset
 from moirae.estimators.online.joint import JointEstimator
 from pytest import raises

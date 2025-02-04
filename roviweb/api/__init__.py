@@ -24,11 +24,13 @@ app.include_router(online.router)
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
+
 @app.get("/")
 async def home(request: Request):
     return templates.TemplateResponse(
         request=request, name="home.html"
     )
+
 
 @app.get("/dashboard/{name}")
 async def dashboard(request: Request, name: str):
