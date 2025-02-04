@@ -4,7 +4,7 @@ import logging
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.templating import Jinja2Templates
 
@@ -30,11 +30,14 @@ async def home(request: Request):
         request=request, name="home.html"
     )
 
-@app.get("/{name}")
-async def status(request: Request, name: str):
+@app.get("/dashboard/{name}")
+async def dashboard(request: Request, name: str):
+    # Raise 404 if no such dataset
+    if name not in state.known_datasets:
+        raise HTTPException(status_code=404, detail=f"No such dataset: {name}")
+
     # Get the estimator status, if available
     table = None
-    print(state.estimators)
     if name in state.estimators:
         est = state.estimators[name]
         est_state = est.estimator.state

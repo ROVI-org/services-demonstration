@@ -1,5 +1,6 @@
 {# Template for a Battery Status Page #}
 {% extends "layout.html" %}
+{% block title %}ROVI Dashboard: {{name}}{% endblock %}
 {% block content %}
 <h1>Status for <code>{{ name }}</code></h1>
 
@@ -12,8 +13,11 @@
 <h3>Current Status</h3>
 
 <p>Current estimates for each parameter</p>
-
+{% if table is none %}
+No health estimates available.
+{% else %}
 {{ table.to_html(col_space=(20, 20, 20), classes='table-sm', index=False, justify='center') | safe }}
+{% endif %}
 
 <h2>Prognosis</h2>
 

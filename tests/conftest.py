@@ -38,3 +38,8 @@ def reset_status():
         conn.execute(f'DROP TABLE IF EXISTS {name}_estimates')
     estimators.clear()
     known_datasets.clear()
+
+
+@fixture()
+def est_file_path():
+    return _file_path / 'example-estimator.py'
