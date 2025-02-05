@@ -10,6 +10,7 @@ authors = [
     {name = "Logan Ward", email = "lward@anl.gov"},
 ]
 dependencies = [
+    "matplotlib",
     "battery-data-toolkit",
 	"fastapi",
     "msgpack",
