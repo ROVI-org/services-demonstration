@@ -85,7 +85,7 @@ async def render_history(name):
 
         fig.tight_layout()
         io = StringIO()
-        fig.savefig(io, format='svg')
-        return Response(content=io.getvalue(), media_type='image/svg')
+        fig.savefig(io, format='svg', dpi=320)
+        return Response(content=io.getvalue(), media_type='image/svg+xml')
     finally:
         plt.close(fig)

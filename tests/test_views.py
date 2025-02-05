@@ -42,5 +42,4 @@ def test_with_data(client, add_data):
 def test_history_figure(client, add_data):
     res = client.get('/dashboard/module/img/history.svg')
     assert res.status_code == 200
-    with _views_dir.joinpath('history.svg').open('w') as fp:
-        print(res.text, file=fp)
+    _views_dir.joinpath('history.svg').write_text(res.text)
