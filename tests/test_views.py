@@ -21,6 +21,14 @@ def add_data(client, example_h5):
             websocket.send_bytes(msgpack.packb(row.to_dict()))
 
 
+@fixture()
+def add_estimator(est_file_path, client):
+    with open(est_file_path.parent / 'initial-asoh.json', 'rb') as rb:
+        return client.post('/online/register',
+                           data={'name': 'module', 'definition': est_file_path.read_text()},
+                           files=[('files', ('initial-asoh.json', rb))])
+
+
 def test_home(client):
     home_page = client.get('/')
     assert home_page.status_code == 200
@@ -37,6 +45,12 @@ def test_with_data(client, add_data):
     assert res.status_code == 200
     assert 'No health estimates available' in res.text
     _views_dir.joinpath('dashboard.html').write_text(res.text)
+
+
+def test_with_estimator(client, add_data, add_estimator):
+    res = client.get('/dashboard/module')
+    assert res.status_code == 200
+    assert 'r0.base_values' in res.text
 
 
 def test_history_figure(client, add_data):
