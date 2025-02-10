@@ -7,6 +7,11 @@ ROVI will eventually use two different web services:
 
 The following sections detail the actions which we expected the web service to provide when building this demo.
 
+## Metadata Upload
+
+The `/db/register` endpoint receives metadata associated with a battery.
+The inputs are a metadata document in the form specified by battery-data-toolkit.
+
 ## Data Upload
 
 The `/db/upload/<name>` endpoint opens a web socket which receives a stream of operational data
@@ -22,9 +27,12 @@ Upon receipt of a message, the web services
 
 ## DB Status Query
 
-The `/db/stats` retrieves basic information about the data stored in SQL.
+The `/db/stats` list which battery datasets are available.
 The endpoint returns a record for each table describing:
 
+- If metadata are available
+- If data are available
+- If an estimator is registered
 - The number of rows
 - The schema for the table
 

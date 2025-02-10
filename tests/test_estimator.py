@@ -50,3 +50,7 @@ def test_several_steps(client, example_h5, est_file_path):
     state = result.json()
     assert 'module' in state
     assert state['module']['latest_time'] == row['test_time']
+
+    # Check the table status
+    datasets = client.get('/db/status').json()
+    assert len(datasets) == 1

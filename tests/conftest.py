@@ -2,11 +2,13 @@ from shutil import copyfileobj
 from pathlib import Path
 
 import requests
+from battdat.data import BatteryDataset
 from pytest import fixture
 from fastapi.testclient import TestClient
 
 from roviweb.api import app
-from roviweb.api.state import conn, estimators, known_datasets
+from roviweb.online import estimators
+from roviweb.db import connect, list_batteries
 
 _file_path = Path(__file__).parent / 'files'
 
@@ -31,13 +33,20 @@ def example_h5():
     return h5_path
 
 
+@fixture()
+def example_dataset(example_h5):
+    return BatteryDataset.from_hdf(example_h5)
+
+
 @fixture(autouse=True)
 def reset_status():
-    for name in known_datasets:
+    conn = connect()
+    for name in list_batteries():
         conn.execute(f'DROP TABLE IF EXISTS {name}')
         conn.execute(f'DROP TABLE IF EXISTS {name}_estimates')
+
+    conn.execute('DELETE FROM battery_metadata')
     estimators.clear()
-    known_datasets.clear()
 
 
 @fixture()

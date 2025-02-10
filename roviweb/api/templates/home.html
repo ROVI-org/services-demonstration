@@ -4,4 +4,33 @@
 
 <p>A simple web page showing what kind of dashboards we plan to provide.</p>
 
+<h2>Available Datasets</h2>
+
+{% if datasets | length == 0 %}
+
+<p>No data are available.</p>
+
+{% else %}
+
+<p>Data are available for {{ datasets | length }} batteries</p>
+
+<table class="table table-striped">
+    <thead><tr>
+        <th scope="col">Name</th>
+        <th scope="col">Has Metadata</th>
+        <th scope="col">Data Size</th>
+        <th scope="col">Has Estimator</th>
+    </tr></thead>
+{% for name, info in datasets.items() %}
+    <tr>
+        <td><a href="/dashboard/{{name}}">{{name}}</a></td>
+        <td>{{info.has_metadata}}</td>
+        <td>{% if info.has_data %}{{info.data_stats.rows}}{% else %}No Data{% endif %}</td>
+        <td>{{info.has_estimator}}</td>
+    </tr>
+{% endfor %}
+</table>
+
+{% endif %}
+
 {% endblock %}

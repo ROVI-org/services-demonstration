@@ -11,7 +11,7 @@ from pydantic import TypeAdapter
 from httpx_ws import connect_ws
 import httpx
 
-from roviweb.schemas import EstimatorStatus, TableStats
+from roviweb.schemas import EstimatorStatus, BatteryStats
 
 
 def upload_estimator(args):
@@ -48,13 +48,13 @@ def get_status(args):
         raise ValueError(f'Failed with status_code={response.status_code}. {response.text}')
 
     # Print the results
-    result: dict[str, TableStats] = TypeAdapter(dict[str, TableStats]).validate_python(response.json())
+    result: dict[str, BatteryStats] = TypeAdapter(dict[str, BatteryStats]).validate_python(response.json())
     if len(result) == 0:
-        print('No databases available')
+        print('No batteries available')
     else:
         print('Database sizes:')
         for name, info in result.items():
-            print(f'  {name}: {info.rows}')
+            print(f'  {name}: {info.data_stats.rows if info.has_data else "No data"}')
 
     # Query the available estimators
     response = httpx.get(f'{args.url}/online/status')

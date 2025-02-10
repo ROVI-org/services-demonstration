@@ -4,15 +4,29 @@ from typing import Dict
 import logging
 
 import msgpack
+from battdat.schemas import BatteryMetadata
 from fastapi import APIRouter
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
-from . import state
-from roviweb.db import register_data_source, write_record
-from roviweb.schemas import TableStats
+from roviweb.db import register_data_source, write_record, register_battery, list_batteries
+from roviweb.schemas import BatteryStats
+from ..online import list_estimators
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@router.post('/db/register')
+def register_data(metadata: BatteryMetadata) -> str:
+    """Supply the metadata for a battery to the web service
+
+    Args:
+        metadata: Metadata associated with the data sources
+
+    Returns:
+        The name of the source
+    """
+    return register_battery(metadata)
 
 
 @router.websocket('/db/upload/{name}')
@@ -26,28 +40,26 @@ async def upload_data(name: str, socket: WebSocket):
         name: Name of the dataset
         socket: The websocket created for this particular session
     """
-
     # Accept the connection
     await socket.accept()
     logger.info(f'Connected to client at {socket.client.host}')
 
     try:
         # Retrieve the name of the dataset
-        state.known_datasets.add(name)
         logger.info(f'Ready to receive data for {name}')
 
         # Retrieve data
         msg = await socket.receive_bytes()
         record = msgpack.unpackb(msg)
         record['received'] = datetime.now().timestamp()
-        type_map = register_data_source(state.conn, name, record)
+        type_map = register_data_source(name, record)
 
         # Continue to write rows until disconnect
         #  TODO (wardlt): Batch writes
         state_db_ready = False
         while True:
             # Increment and store estimator
-            if (holder := state.estimators.get(name)) is not None:
+            if (holder := list_estimators().get(name)) is not None:
                 holder.step(record)
                 state_record = {'test_time': record['test_time']}
                 for vname, val in zip(holder.estimator.state_names, holder.estimator.state.get_mean()):
@@ -55,12 +67,12 @@ async def upload_data(name: str, socket: WebSocket):
 
                 db_name = f'{name}_estimates'
                 if not state_db_ready:
-                    state_db_map = register_data_source(state.conn, db_name, state_record)
+                    state_db_map = register_data_source(db_name, state_record)
                     state_db_ready = True
-                write_record(state.conn, db_name, state_db_map, state_record)
+                write_record(db_name, state_db_map, state_record)
 
             # Write to database
-            write_record(state.conn, name, type_map, record)
+            write_record(name, type_map, record)
 
             # Get next step
             msg = await socket.receive_bytes()
@@ -71,20 +83,11 @@ async def upload_data(name: str, socket: WebSocket):
 
 
 @router.get('/db/stats')
-def get_db_stats() -> Dict[str, TableStats]:
-    """Retrieve information about what data are stored"""
+def get_db_stats() -> Dict[str, BatteryStats]:
+    """List the battery datasets available
 
-    # Get the stats for each dataset
-    output = {}
-    for name in state.known_datasets:
-        # Get size information
-        rows = state.conn.execute(
-            'SELECT estimated_size FROM duckdb_tables() WHERE table_name = ?', [name]
-        ).fetchone()[0]
+    Returns:
+        A map of battery name to information about what we hold about it
+    """
 
-        # Get column information
-        columns = state.conn.execute('SELECT * FROM duckdb_columns() WHERE table_name = ?', [name]).df()
-        columns = dict(zip(columns['column_name'], columns['data_type']))
-        output[name] = TableStats(rows=rows, columns=columns)
-
-    return output
+    return list_batteries()
