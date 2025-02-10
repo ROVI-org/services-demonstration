@@ -7,7 +7,7 @@ from moirae.interface import row_to_inputs
 from moirae.estimators.online import OnlineEstimator
 from moirae.models.base import InputQuantities
 
-from roviweb.db import RecordType
+from roviweb.schemas import RecordType
 
 
 def load_estimator(text: str, variable_name: str = 'estimator', working_dir: Path | None = None) -> OnlineEstimator:

@@ -10,15 +10,14 @@ import duckdb
 
 import numpy as np
 
-from roviweb.schemas import TableStats, BatteryStats
+from roviweb.schemas import TableStats, BatteryStats, RecordType
+from roviweb.online import list_estimators
 
 _data_types_to_sql = {
     'f': 'FLOAT',
     'i': 'INTEGER'
 }
 _name_re = re.compile(r'\w+$')
-
-RecordType = dict[str, int | float | str]
 
 
 @cache  # Only connect once per session
@@ -66,6 +65,7 @@ def list_batteries() -> dict[str, TableStats]:
 
     # Get the stats for each dataset
     output = {}
+    estimators = list_estimators()
     for name, in all_batteries:
         # Get size information
         rows = conn.execute(
@@ -85,7 +85,7 @@ def list_batteries() -> dict[str, TableStats]:
         output[name] = BatteryStats(
             has_metadata=(name,) not in no_metadata,
             has_data=table_stats is not None,
-            has_estimator=False,  # TBD
+            has_estimator=name in estimators,
             data_stats=table_stats
         )
 

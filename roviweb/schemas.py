@@ -37,3 +37,7 @@ class EstimatorStatus(BaseModel):
     """Mean of the state estimates"""
     covariance: list[list[float]]
     """Covariance of the estimated states"""
+
+
+RecordType = dict[str, int | float | str]
+"""Accepted format for DB records"""

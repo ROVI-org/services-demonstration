@@ -21,4 +21,5 @@ def test_upload_metadata(client, example_dataset):
     stats = client.get('/db/stats').json()
     name = res.json()
     assert stats[name]['has_metadata']
+    assert not stats[name]['has_estimator']
     assert not stats[name]['has_data']
