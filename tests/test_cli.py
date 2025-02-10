@@ -63,4 +63,4 @@ def test_upload(file_path, capsys, example_h5):
 
 def test_status(capsys):
     main(['status'])
-    assert 'No databases available' in capsys.readouterr().out
+    assert 'No batteries available' in capsys.readouterr().out
