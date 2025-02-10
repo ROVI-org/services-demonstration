@@ -6,7 +6,8 @@ from pytest import fixture
 from fastapi.testclient import TestClient
 
 from roviweb.api import app
-from roviweb.api.state import conn, estimators, known_datasets
+from roviweb.api.state import estimators, known_datasets
+from roviweb.db import connect
 
 _file_path = Path(__file__).parent / 'files'
 
@@ -33,6 +34,7 @@ def example_h5():
 
 @fixture(autouse=True)
 def reset_status():
+    conn = connect()
     for name in known_datasets:
         conn.execute(f'DROP TABLE IF EXISTS {name}')
         conn.execute(f'DROP TABLE IF EXISTS {name}_estimates')

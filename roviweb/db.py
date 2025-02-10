@@ -1,8 +1,10 @@
 """Utility operations for working with the DuckDB"""
 import re
 from typing import Dict
+from functools import cache
 
 from duckdb import DuckDBPyConnection
+import duckdb
 
 import numpy as np
 
@@ -15,16 +17,22 @@ _name_re = re.compile(r'\w+$')
 RecordType = dict[str, int | float | str]
 
 
-def register_data_source(conn: DuckDBPyConnection, name: str, first_record: RecordType) -> Dict[str, str]:
+@cache  # Only connect once per session
+def connect() -> DuckDBPyConnection:
+    """Establish a connection to the data services"""
+    return duckdb.connect(":memory:")  # For now, just memory. No persistence between runs
+
+
+def register_data_source(name: str, first_record: RecordType) -> Dict[str, str]:
     """Create a new table in the database
 
     Args:
-        conn: Connection to DuckDB
         name: Name used for the table
         first_record: First record for the database
     Returns:
         Map of column names to SQL types
     """
+    conn = connect()
 
     # Determine the data types
     col_types = {}
@@ -41,16 +49,16 @@ def register_data_source(conn: DuckDBPyConnection, name: str, first_record: Reco
     return col_types
 
 
-def write_record(conn: DuckDBPyConnection, name: str, type_map: Dict[str, str], record: RecordType):
+def write_record(name: str, type_map: Dict[str, str], record: RecordType):
     """Write a series of records to a certain table
 
     Args:
-        conn: Connection to DuckDB
         name: Name used for the table
         type_map: Map of column name to expected type
         record: Record to be written
     """
 
+    conn = connect()
     conn.execute(
         f'INSERT INTO {name} ({", ".join(record.keys())}) VALUES ({", ".join("?" * len(record))})',
         [v if not type_map[k] == "VARCHAR" else str(v) for k, v in record.items()]

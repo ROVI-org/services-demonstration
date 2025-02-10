@@ -8,7 +8,7 @@ from fastapi import APIRouter
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from . import state
-from roviweb.db import register_data_source, write_record
+from roviweb.db import register_data_source, write_record, connect
 from roviweb.schemas import TableStats
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,6 @@ async def upload_data(name: str, socket: WebSocket):
         name: Name of the dataset
         socket: The websocket created for this particular session
     """
-
     # Accept the connection
     await socket.accept()
     logger.info(f'Connected to client at {socket.client.host}')
@@ -40,7 +39,7 @@ async def upload_data(name: str, socket: WebSocket):
         msg = await socket.receive_bytes()
         record = msgpack.unpackb(msg)
         record['received'] = datetime.now().timestamp()
-        type_map = register_data_source(state.conn, name, record)
+        type_map = register_data_source(name, record)
 
         # Continue to write rows until disconnect
         #  TODO (wardlt): Batch writes
@@ -55,12 +54,12 @@ async def upload_data(name: str, socket: WebSocket):
 
                 db_name = f'{name}_estimates'
                 if not state_db_ready:
-                    state_db_map = register_data_source(state.conn, db_name, state_record)
+                    state_db_map = register_data_source(db_name, state_record)
                     state_db_ready = True
-                write_record(state.conn, db_name, state_db_map, state_record)
+                write_record(db_name, state_db_map, state_record)
 
             # Write to database
-            write_record(state.conn, name, type_map, record)
+            write_record(name, type_map, record)
 
             # Get next step
             msg = await socket.receive_bytes()
@@ -74,16 +73,18 @@ async def upload_data(name: str, socket: WebSocket):
 def get_db_stats() -> Dict[str, TableStats]:
     """Retrieve information about what data are stored"""
 
+    conn = connect()
+
     # Get the stats for each dataset
     output = {}
     for name in state.known_datasets:
         # Get size information
-        rows = state.conn.execute(
+        rows = conn.execute(
             'SELECT estimated_size FROM duckdb_tables() WHERE table_name = ?', [name]
         ).fetchone()[0]
 
         # Get column information
-        columns = state.conn.execute('SELECT * FROM duckdb_columns() WHERE table_name = ?', [name]).df()
+        columns = conn.execute('SELECT * FROM duckdb_columns() WHERE table_name = ?', [name]).df()
         columns = dict(zip(columns['column_name'], columns['data_type']))
         output[name] = TableStats(rows=rows, columns=columns)
 

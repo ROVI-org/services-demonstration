@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.templating import Jinja2Templates
 
 from . import db, online, state
+from ..db import connect
 
 logger = logging.getLogger(__name__)
 mpl.use('Agg')
@@ -63,11 +64,12 @@ async def render_history(name):
     # Raise 404 if no such dataset
     if name not in state.known_datasets:
         raise HTTPException(status_code=404, detail=f"No such dataset: {name}")
+    conn = connect()
 
     # Get the latest time in the database
-    last_time, = state.conn.sql(f'SELECT MAX(test_time) from {name}').fetchone()
-    data = state.conn.execute(f'SELECT test_time, voltage, current FROM {name} '
-                              f'WHERE test_time > {last_time - 24 * 3600}').df()
+    last_time, = conn.sql(f'SELECT MAX(test_time) from {name}').fetchone()
+    data = conn.execute(f'SELECT test_time, voltage, current FROM {name} '
+                        f'WHERE test_time > {last_time - 24 * 3600}').df()
 
     # Convert time to time since latest in hours
     data['since_pres'] = (data['test_time'] - last_time) / 3600.
