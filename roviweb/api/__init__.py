@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.templating import Jinja2Templates
 
 from . import db, online, state
-from ..db import connect
+from ..db import connect, list_batteries
 
 logger = logging.getLogger(__name__)
 mpl.use('Agg')
@@ -40,7 +40,7 @@ async def home(request: Request):
 @app.get("/dashboard/{name}")
 async def dashboard(request: Request, name: str):
     # Raise 404 if no such dataset
-    if name not in state.known_datasets:
+    if name not in list_batteries():
         raise HTTPException(status_code=404, detail=f"No such dataset: {name}")
 
     # Get the estimator status, if available
@@ -62,7 +62,7 @@ async def dashboard(request: Request, name: str):
 @app.get("/dashboard/{name}/img/history.svg")
 async def render_history(name):
     # Raise 404 if no such dataset
-    if name not in state.known_datasets:
+    if name not in list_batteries():  # TODO: Make faster by just checking dataset
         raise HTTPException(status_code=404, detail=f"No such dataset: {name}")
     conn = connect()
 

@@ -46,7 +46,6 @@ async def upload_data(name: str, socket: WebSocket):
 
     try:
         # Retrieve the name of the dataset
-        state.known_datasets.add(name)
         logger.info(f'Ready to receive data for {name}')
 
         # Retrieve data

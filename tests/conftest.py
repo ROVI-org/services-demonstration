@@ -7,8 +7,8 @@ from pytest import fixture
 from fastapi.testclient import TestClient
 
 from roviweb.api import app
-from roviweb.api.state import estimators, known_datasets
-from roviweb.db import connect
+from roviweb.api.state import estimators
+from roviweb.db import connect, list_batteries
 
 _file_path = Path(__file__).parent / 'files'
 
@@ -41,13 +41,12 @@ def example_dataset(example_h5):
 @fixture(autouse=True)
 def reset_status():
     conn = connect()
-    for name in known_datasets:
+    for name in list_batteries():
         conn.execute(f'DROP TABLE IF EXISTS {name}')
         conn.execute(f'DROP TABLE IF EXISTS {name}_estimates')
 
     conn.execute('DELETE FROM battery_metadata')
     estimators.clear()
-    known_datasets.clear()
 
 
 @fixture()

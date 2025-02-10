@@ -11,7 +11,7 @@ from pydantic import TypeAdapter
 from httpx_ws import connect_ws
 import httpx
 
-from roviweb.schemas import EstimatorStatus, TableStats, BatteryStats
+from roviweb.schemas import EstimatorStatus, BatteryStats
 
 
 def upload_estimator(args):

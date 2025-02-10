@@ -2,5 +2,4 @@
 from roviweb.online import EstimatorHolder
 
 # Holding the dataset and estimator names
-known_datasets = set()
 estimators: dict[str, EstimatorHolder] = {}
