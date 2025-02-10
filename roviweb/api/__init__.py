@@ -11,8 +11,9 @@ from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.templating import Jinja2Templates
 
-from . import db, online, state
+from . import db, online
 from ..db import connect, list_batteries
+from ..online import list_estimators
 
 logger = logging.getLogger(__name__)
 mpl.use('Agg')
@@ -45,8 +46,7 @@ async def dashboard(request: Request, name: str):
 
     # Get the estimator status, if available
     table = None
-    if name in state.estimators:
-        est = state.estimators[name]
+    if (est := list_estimators().get(name)) is not None:
         est_state = est.estimator.state
         table = pd.DataFrame({
             'name': est.estimator.state_names,

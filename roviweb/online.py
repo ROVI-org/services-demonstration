@@ -60,3 +60,25 @@ class EstimatorHolder:
         # Update state
         self._last_inputs = inputs
         self.last_time = record['test_time']
+
+
+estimators: dict[str, EstimatorHolder] = {}  # Just hold in memory now
+
+
+def list_estimators() -> dict[str, EstimatorHolder]:
+    """List the estimators known to the web service
+
+    Returns:
+        Map of name to data structure holding it
+    """
+    return estimators.copy()
+
+
+def register_estimator(name: str, estimator: EstimatorHolder):
+    """Add a new estimators to those being tracked by the web service
+
+    Args:
+        name: Name of the associated dataset
+        estimator: Estimator object
+    """
+    estimators[name] = estimator

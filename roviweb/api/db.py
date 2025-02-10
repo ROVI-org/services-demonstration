@@ -8,9 +8,9 @@ from battdat.schemas import BatteryMetadata
 from fastapi import APIRouter
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
-from . import state
 from roviweb.db import register_data_source, write_record, register_battery, list_batteries
 from roviweb.schemas import BatteryStats
+from ..online import list_estimators
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -59,7 +59,7 @@ async def upload_data(name: str, socket: WebSocket):
         state_db_ready = False
         while True:
             # Increment and store estimator
-            if (holder := state.estimators.get(name)) is not None:
+            if (holder := list_estimators().get(name)) is not None:
                 holder.step(record)
                 state_record = {'test_time': record['test_time']}
                 for vname, val in zip(holder.estimator.state_names, holder.estimator.state.get_mean()):
