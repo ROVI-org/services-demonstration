@@ -4,15 +4,29 @@ from typing import Dict
 import logging
 
 import msgpack
+from battdat.schemas import BatteryMetadata
 from fastapi import APIRouter
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from . import state
-from roviweb.db import register_data_source, write_record, connect
+from roviweb.db import register_data_source, write_record, connect, register_battery
 from roviweb.schemas import TableStats
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@router.post('/db/register')
+def register_data(metadata: BatteryMetadata) -> str:
+    """Supply the metadata for a battery to the web service
+
+    Args:
+        metadata: Metadata associated with the data sources
+
+    Returns:
+        The name of the source
+    """
+    return register_battery(metadata)
 
 
 @router.websocket('/db/upload/{name}')

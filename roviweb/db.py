@@ -1,8 +1,10 @@
 """Utility operations for working with the DuckDB"""
 import re
+from uuid import uuid4
 from typing import Dict
 from functools import cache
 
+from battdat.schemas import BatteryMetadata
 from duckdb import DuckDBPyConnection
 import duckdb
 
@@ -21,6 +23,34 @@ RecordType = dict[str, int | float | str]
 def connect() -> DuckDBPyConnection:
     """Establish a connection to the data services"""
     return duckdb.connect(":memory:")  # For now, just memory. No persistence between runs
+
+
+def register_battery(metadata: BatteryMetadata) -> str:
+    """Register a battery by providing its metadata
+
+    Args:
+        metadata: Metadata of a battery system
+    Returns:
+        The name to be used for the source
+    """
+
+    # Insert the metadata as a JSON object
+    name = metadata.name or uuid4()
+    conn = connect()
+
+    # Establish the database if the table does not exist
+    conn.execute((
+        'CREATE TABLE IF NOT EXISTS battery_metadata('
+        'name VARCHAR PRIMARY KEY,'
+        'metadata VARCHAR)'
+    ))
+
+    # Insert the data
+    conn.execute(
+        'INSERT INTO battery_metadata VALUES (?, ?)',
+        [name, metadata.model_dump_json()]
+    )
+    return name
 
 
 def register_data_source(name: str, first_record: RecordType) -> Dict[str, str]:

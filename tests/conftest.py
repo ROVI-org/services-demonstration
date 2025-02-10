@@ -2,6 +2,7 @@ from shutil import copyfileobj
 from pathlib import Path
 
 import requests
+from battdat.data import BatteryDataset
 from pytest import fixture
 from fastapi.testclient import TestClient
 
@@ -32,10 +33,15 @@ def example_h5():
     return h5_path
 
 
+@fixture()
+def example_dataset(example_h5):
+    return BatteryDataset.from_hdf(example_h5)
+
+
 @fixture(autouse=True)
 def reset_status():
     conn = connect()
-    for name in known_datasets:
+    for name in known_datasets.union({'battery_metadata'}):
         conn.execute(f'DROP TABLE IF EXISTS {name}')
         conn.execute(f'DROP TABLE IF EXISTS {name}_estimates')
     estimators.clear()
