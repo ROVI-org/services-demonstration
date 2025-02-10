@@ -9,8 +9,8 @@ from fastapi import APIRouter
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from . import state
-from roviweb.db import register_data_source, write_record, connect, register_battery
-from roviweb.schemas import TableStats
+from roviweb.db import register_data_source, write_record, register_battery, list_batteries
+from roviweb.schemas import BatteryStats
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -84,22 +84,11 @@ async def upload_data(name: str, socket: WebSocket):
 
 
 @router.get('/db/stats')
-def get_db_stats() -> Dict[str, TableStats]:
-    """Retrieve information about what data are stored"""
+def get_db_stats() -> Dict[str, BatteryStats]:
+    """List the battery datasets available
 
-    conn = connect()
+    Returns:
+        A map of battery name to information about what we hold about it
+    """
 
-    # Get the stats for each dataset
-    output = {}
-    for name in state.known_datasets:
-        # Get size information
-        rows = conn.execute(
-            'SELECT estimated_size FROM duckdb_tables() WHERE table_name = ?', [name]
-        ).fetchone()[0]
-
-        # Get column information
-        columns = conn.execute('SELECT * FROM duckdb_columns() WHERE table_name = ?', [name]).df()
-        columns = dict(zip(columns['column_name'], columns['data_type']))
-        output[name] = TableStats(rows=rows, columns=columns)
-
-    return output
+    return list_batteries()

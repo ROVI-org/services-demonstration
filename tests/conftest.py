@@ -41,9 +41,11 @@ def example_dataset(example_h5):
 @fixture(autouse=True)
 def reset_status():
     conn = connect()
-    for name in known_datasets.union({'battery_metadata'}):
+    for name in known_datasets:
         conn.execute(f'DROP TABLE IF EXISTS {name}')
         conn.execute(f'DROP TABLE IF EXISTS {name}_estimates')
+
+    conn.execute('DELETE FROM battery_metadata')
     estimators.clear()
     known_datasets.clear()
 

@@ -11,6 +11,21 @@ class TableStats(BaseModel):
     """Names and types of the columns"""
 
 
+class BatteryStats(BaseModel):
+    """Describe the status of a certain battery"""
+
+    has_metadata: bool
+    """Whether metadata have been registered for the cell"""
+    has_data: bool
+    """Whether a dataset for the cell has been uploaded"""
+    has_estimator: bool
+    """Whether an estimator is available for the cell"""
+
+    # About the dataaset
+    data_stats: TableStats | None
+    """Description of the table"""
+
+
 class EstimatorStatus(BaseModel):
     """Condition and status of a state estimator"""
 

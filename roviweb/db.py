@@ -10,6 +10,8 @@ import duckdb
 
 import numpy as np
 
+from roviweb.schemas import TableStats, BatteryStats
+
 _data_types_to_sql = {
     'f': 'FLOAT',
     'i': 'INTEGER'
@@ -22,7 +24,15 @@ RecordType = dict[str, int | float | str]
 @cache  # Only connect once per session
 def connect() -> DuckDBPyConnection:
     """Establish a connection to the data services"""
-    return duckdb.connect(":memory:")  # For now, just memory. No persistence between runs
+    conn = duckdb.connect(":memory:")  # For now, just memory. No persistence between runs
+
+    # Establish the database if the table does not exist
+    conn.execute((
+        'CREATE TABLE IF NOT EXISTS battery_metadata('
+        'name VARCHAR PRIMARY KEY,'
+        'metadata VARCHAR)'
+    ))
+    return conn
 
 
 def register_battery(metadata: BatteryMetadata) -> str:
@@ -38,19 +48,48 @@ def register_battery(metadata: BatteryMetadata) -> str:
     name = metadata.name or uuid4()
     conn = connect()
 
-    # Establish the database if the table does not exist
-    conn.execute((
-        'CREATE TABLE IF NOT EXISTS battery_metadata('
-        'name VARCHAR PRIMARY KEY,'
-        'metadata VARCHAR)'
-    ))
-
     # Insert the data
     conn.execute(
-        'INSERT INTO battery_metadata VALUES (?, ?)',
+        'INSERT OR REPLACE INTO battery_metadata VALUES (?, ?)',
         [name, metadata.model_dump_json()]
     )
     return name
+
+
+def list_batteries() -> dict[str, TableStats]:
+    """Retrieve information about what data are stored"""
+    conn = connect()
+
+    # List the cells in the metadata datable
+    all_batteries = conn.sql('SELECT name FROM battery_metadata').fetchall()
+    no_metadata = conn.sql('SELECT name FROM battery_metadata WHERE metadata IS NULL').fetchall()
+
+    # Get the stats for each dataset
+    output = {}
+    for name, in all_batteries:
+        # Get size information
+        rows = conn.execute(
+            'SELECT estimated_size FROM duckdb_tables() WHERE table_name = ?', [name]
+        ).fetchone()
+        if rows is not None:
+            rows = rows[0]
+
+            # Get column information
+            columns = conn.execute('SELECT * FROM duckdb_columns() WHERE table_name = ?', [name]).df()
+            columns = dict(zip(columns['column_name'], columns['data_type']))
+            table_stats = TableStats(rows=rows, columns=columns)
+        else:
+            table_stats = None
+
+        # Make the summary
+        output[name] = BatteryStats(
+            has_metadata=(name,) not in no_metadata,
+            has_data=table_stats is not None,
+            has_estimator=False,  # TBD
+            data_stats=table_stats
+        )
+
+    return output
 
 
 def register_data_source(name: str, first_record: RecordType) -> Dict[str, str]:
@@ -63,6 +102,9 @@ def register_data_source(name: str, first_record: RecordType) -> Dict[str, str]:
         Map of column names to SQL types
     """
     conn = connect()
+
+    # Insert metadata into table if not present
+    conn.execute('INSERT INTO battery_metadata VALUES (?, NULL) ON CONFLICT DO NOTHING;', [name])
 
     # Determine the data types
     col_types = {}
