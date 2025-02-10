@@ -104,7 +104,8 @@ def register_data_source(name: str, first_record: RecordType) -> Dict[str, str]:
     conn = connect()
 
     # Insert metadata into table if not present
-    conn.execute('INSERT INTO battery_metadata VALUES (?, NULL) ON CONFLICT DO NOTHING;', [name])
+    if not name.endswith('_estimates'):
+        conn.execute('INSERT INTO battery_metadata VALUES (?, NULL) ON CONFLICT DO NOTHING;', [name])
 
     # Determine the data types
     col_types = {}

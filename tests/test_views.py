@@ -32,6 +32,7 @@ def add_estimator(est_file_path, client):
 def test_home(client):
     home_page = client.get('/')
     assert home_page.status_code == 200
+    assert 'No data are available' in home_page.text
 
 
 def test_not_found(client, example_h5):
@@ -41,6 +42,11 @@ def test_not_found(client, example_h5):
 
 
 def test_with_data(client, add_data):
+    # Make sure it's present on the home page
+    res = client.get('/')
+    assert 'available for 1 batteries' in res.text
+
+    # Test the dashboard
     res = client.get('/dashboard/module')
     assert res.status_code == 200
     assert 'No health estimates available' in res.text
