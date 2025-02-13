@@ -17,18 +17,17 @@ initial_asoh.ocv.ocv_ref.base_values = np.array([base_vals])
 initial_asoh.ocv.ocv_ref.soc_pinpoints = np.array(soc_pinpoints)
 initial_asoh.ocv.ocv_ref.interpolation_style = 'linear'
 
-# Make it so the resistance and capacity will be estimated
-initial_asoh.mark_updatable('r0.base_values')
+# Make it so the capacity will be estimated
 initial_asoh.mark_updatable('q_t.base_values')
 
 # Uncertainties for the parameters
 # For A-SOH, assume 2*standard_dev is 0.5% of the value of the parameter
 asoh_covariance = [(2.5e-03 * initial_asoh.q_t.base_values.item()) ** 2]  # +/- std_dev^2 Qt
-asoh_covariance += ((2.5e-03 * initial_asoh.r0.base_values.flatten()) ** 2).tolist()  # +/- std_dev^2 of R0
 asoh_covariance = np.diag(asoh_covariance)
+
 # For the transients, assume SOC is a uniform random variable in [0,1], and hysteresis has 2*std_dev of 1 mV
 init_transients = ECMTransientVector.from_asoh(initial_asoh)
-init_transients.soc = np.atleast_2d(1.)
+init_transients.soc = np.atleast_2d(0)
 tran_covariance = np.diag([1 / 12, 2.5e-07])
 
 # Make the noise terms
