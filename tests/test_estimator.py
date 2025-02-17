@@ -3,7 +3,7 @@ from moirae.estimators.online.joint import JointEstimator
 from pytest import raises
 import msgpack
 
-from roviweb.online import load_estimator
+from roviweb.utils import load_variable
 
 
 def upload_estimator(path, client):
@@ -16,13 +16,13 @@ def upload_estimator(path, client):
 def test_load(est_file_path):
     # Wrong directory
     with raises(FileNotFoundError, match='No such file'):
-        load_estimator(est_file_path.read_text())
+        load_variable(est_file_path.read_text())
 
     # Wrong variable name
     with raises(ValueError, match='not_found'):
-        load_estimator(est_file_path.read_text(), working_dir=est_file_path.parent, variable_name='not_found')
+        load_variable(est_file_path.read_text(), working_dir=est_file_path.parent, variable_name='not_found')
 
-    est = load_estimator(est_file_path.read_text(), working_dir=est_file_path.parent)
+    est = load_variable(est_file_path.read_text(), working_dir=est_file_path.parent)
     assert isinstance(est, JointEstimator)
 
 
