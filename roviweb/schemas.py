@@ -60,3 +60,15 @@ class ForecasterInfo(BaseModel):
 
 RecordType = dict[str, int | float | str]
 """Accepted format for DB records"""
+
+
+class LoadSpecification(BaseModel):
+    """Specification used for load forecasting
+
+    TBD: Convert prognostics models to use actual times
+    """
+
+    ahead_time: float = Field(gt=0)
+    """How much time to forecast ahead (units: timesteps)"""
+    resolution: float = Field(1, gt=0)
+    """Resolution at which to produce forecasts (units: timesteps)"""

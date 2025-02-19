@@ -38,7 +38,7 @@ with open(forecast_model_path, "rb") as f:
 
 def forecast(input_df: pd.DataFrame, load_scenario: pd.DataFrame) -> pd.DataFrame:
     # Run inference to get the model inputs
-    series = input_df['q_t.base_values']
+    series = input_df['q_t__base_values']
     X = extract_features(series).reshape(1, -1)
     X_pca = pca.transform(series.to_numpy().reshape(1, -1))
     X_combined = np.hstack([X, X_pca])

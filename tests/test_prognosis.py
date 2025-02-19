@@ -2,15 +2,16 @@
 from contextlib import ExitStack
 from pathlib import Path
 
+import msgpack
 import pandas as pd
 import numpy as np
 from pytest import fixture
 
 from roviweb.utils import load_variable
-from roviweb.schemas import PrognosticsFunction, ForecasterInfo
-from roviweb.prognosis import register_forecaster, list_forecasters
+from roviweb.schemas import PrognosticsFunction, ForecasterInfo, LoadSpecification
+from roviweb.prognosis import register_forecaster, list_forecasters, make_load_scenario, perform_prognosis
 
-_my_query = 'SELECT q_t.base_values FROM $TABLE_NAME$ ORDER BY test_time DESC LIMIT 10000'
+_my_query = 'SELECT q_t__base_values FROM $TABLE_NAME$ ORDER BY test_time DESC LIMIT 10000'
 
 
 @fixture()
@@ -25,7 +26,7 @@ def forecast_fun(forecast_path) -> PrognosticsFunction:
 
 def test_load_then_execute(forecast_fun):
     output = forecast_fun(
-        pd.DataFrame({'q_t.base_values': np.random.normal(0.4, 0.005, size=(10000,))}),
+        pd.DataFrame({'q_t__base_values': np.random.normal(0.4, 0.005, size=(10000,))}),
         pd.DataFrame({'time': np.arange(200)})
     )
     assert len(output) == 200
@@ -55,3 +56,27 @@ def test_upload(forecast_path, client):
     result = upload_forecaster(forecast_path, client)
     assert result.status_code == 200, result.text
     assert _my_query in result.text
+
+
+def test_run(forecast_fun, example_dataset, upload_estimator, client):
+    # Register the forecaster
+    info = ForecasterInfo(
+        function=forecast_fun,
+        sql_query=_my_query,
+    )
+    register_forecaster('module', info)
+
+    # Upload a few steps of cycling data
+    with client.websocket_connect("/db/upload/module") as websocket:
+        # Send 4 data points
+        for i in range(10001):
+            row = example_dataset.tables['raw_data'].iloc[i]
+            websocket.send_bytes(msgpack.packb(row.to_dict()))
+
+    # Make the load scenario
+    load = make_load_scenario(LoadSpecification(ahead_time=1000))
+    assert len(load) == 1000
+
+    # Invoke the inference
+    forecast = perform_prognosis('module', load)
+    assert len(forecast) == 1000

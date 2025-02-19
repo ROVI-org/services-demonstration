@@ -3,20 +3,21 @@ import numpy as np
 import pandas as pd
 
 from roviweb.db import connect
-from roviweb.schemas import ForecasterInfo
+from roviweb.schemas import ForecasterInfo, LoadSpecification
 
 forecasters: dict[str, ForecasterInfo] = {}  # Just hold in memory now
 
 
 # TODO (wardlt): Flesh this out
-def make_load_scenario(ahead_time: float, resolution: float) -> pd.DataFrame:
+def make_load_scenario(load_spec: LoadSpecification) -> pd.DataFrame:
     """Generate a load scenario according
 
     Args:
-        ahead_time: How far into the future to predict
-        resolution: Resolution of the time-series data
+        load_spec: Specification of desired load
+    Returns:
+        Load forecast to use in prognosis
     """
-    return pd.DataFrame({'time': np.arange(0, ahead_time, resolution)})
+    return pd.DataFrame({'time': np.arange(0, load_spec.ahead_time, load_spec.resolution)})
 
 
 def perform_prognosis(name: str, load_scenario: pd.DataFrame) -> pd.DataFrame:
