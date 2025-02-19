@@ -12,11 +12,13 @@ authors = [
 dependencies = [
     "matplotlib",
     "battery-data-toolkit",
-	"fastapi",
+    "fastapi",
     "msgpack",
     "python-multipart",
     "moirae@git+https://github.com/ROVI-org/auto-soh.git",
     "httpx-ws",
+    "numpy<2",  # Vignesh's models are sklearn <1.3, which was before NumPy 2
+    "scikit-learn<1.3",
     "tqdm"
 ]
 
