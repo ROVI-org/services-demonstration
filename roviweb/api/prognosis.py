@@ -8,8 +8,8 @@ from fastapi import Form, UploadFile, APIRouter
 from pydantic import Field
 
 from roviweb.utils import load_variable
-from roviweb.schemas import ForecasterInfo
-from roviweb.prognosis import register_forecaster
+from roviweb.schemas import ForecasterInfo, LoadSpecification
+from roviweb.prognosis import register_forecaster, make_load_scenario, perform_prognosis
 
 router = APIRouter()
 
@@ -51,3 +51,19 @@ async def upload_forecaster(
     register_forecaster(name, forecaster)
 
     return str(forecaster)
+
+
+@router.post('/prognosis/{name}/run')
+def run_prognosis(name: str, data: LoadSpecification) -> dict[str, list[float]]:
+    """Run prognosis for a certain system under user-defined load conditions
+
+    Args:
+        name: Name of the system in question
+        data: Load specification
+    Returns:
+        Data for the load forecast and aSOH changes
+    """
+
+    load = make_load_scenario(data)
+    forecast = perform_prognosis(name, load)
+    return {**load.to_dict(orient='list'), **forecast.to_dict(orient='list')}

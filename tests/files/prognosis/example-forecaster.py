@@ -52,4 +52,4 @@ def forecast(input_df: pd.DataFrame, load_scenario: pd.DataFrame) -> pd.DataFram
     forecast_vals = np.abs(poly(x, model_parameters))
     forecast_vals = pd.Series(forecast_vals)
 
-    return pd.DataFrame({'q_t.base_values': forecast_vals[len(input_df):]})
+    return pd.DataFrame({'q_t__base_values': forecast_vals[len(input_df):]})

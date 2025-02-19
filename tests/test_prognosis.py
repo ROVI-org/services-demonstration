@@ -9,7 +9,7 @@ from pytest import fixture
 
 from roviweb.utils import load_variable
 from roviweb.schemas import PrognosticsFunction, ForecasterInfo, LoadSpecification
-from roviweb.prognosis import register_forecaster, list_forecasters, make_load_scenario, perform_prognosis
+from roviweb.prognosis import register_forecaster, list_forecasters
 
 _my_query = 'SELECT q_t__base_values FROM $TABLE_NAME$ ORDER BY test_time DESC LIMIT 10000'
 
@@ -73,10 +73,7 @@ def test_run(forecast_fun, example_dataset, upload_estimator, client):
             row = example_dataset.tables['raw_data'].iloc[i]
             websocket.send_bytes(msgpack.packb(row.to_dict()))
 
-    # Make the load scenario
-    load = make_load_scenario(LoadSpecification(ahead_time=1000))
-    assert len(load) == 1000
-
-    # Invoke the inference
-    forecast = perform_prognosis('module', load)
-    assert len(forecast) == 1000
+    reply = client.post('/prognosis/module/run', data=LoadSpecification(ahead_time=1000).model_dump_json())
+    df = pd.DataFrame(reply.json())
+    assert len(df) == 1000
+    assert 'q_t__base_values' in df.columns
