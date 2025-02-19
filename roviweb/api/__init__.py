@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.templating import Jinja2Templates
 
-from . import db, online
+from . import db, online, prognosis
 from ..db import connect, list_batteries
 from ..online import list_estimators
 
@@ -27,6 +27,7 @@ app.add_middleware(
 )
 app.include_router(db.router)
 app.include_router(online.router)
+app.include_router(prognosis.router)
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 

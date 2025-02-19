@@ -50,7 +50,7 @@ PrognosticsFunction = Callable[[pd.DataFrame, pd.DataFrame], pd.DataFrame]
 class ForecasterInfo(BaseModel):
     """Information about how to run the prognosis models"""
 
-    function: PrognosticsFunction
+    function: PrognosticsFunction = Field(repr=False)
     """Function to be invoked for inferring prognosis"""
     sql_query: str = Field(pattern=r'(?:from|FROM) \$TABLE_NAME\$')
     """Query used against the time series database to gather inference inputs"""
