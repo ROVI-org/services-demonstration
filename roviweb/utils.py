@@ -3,7 +3,7 @@ from contextlib import chdir
 from pathlib import Path
 
 
-def load_variable(text: str, variable_name: str = 'estimator', working_dir: Path | None = None):
+def load_variable(text: str, variable_name: str, working_dir: Path | None = None):
     """Executing a Python file and retrieving a single variable
 
     The file should be executed in a directory containing any of the files provided alongside the estimator.

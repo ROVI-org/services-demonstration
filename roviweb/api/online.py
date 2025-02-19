@@ -34,7 +34,7 @@ async def upload_estimator(name: Annotated[str, Form()],
                 shutil.copyfileobj(file.file, fo)
 
         # Execute the function to create the estimator
-        estimator = load_variable(definition, working_dir=td)
+        estimator = load_variable(definition, variable_name='estimator', working_dir=td)
 
         # Add it to the estimator collection
         register_estimator(name, EstimatorHolder(estimator=estimator, last_time=valid_time))

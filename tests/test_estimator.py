@@ -16,13 +16,13 @@ def upload_estimator(path, client):
 def test_load(est_file_path):
     # Wrong directory
     with raises(FileNotFoundError, match='No such file'):
-        load_variable(est_file_path.read_text())
+        load_variable(est_file_path.read_text(), 'estimator')
 
     # Wrong variable name
     with raises(ValueError, match='not_found'):
         load_variable(est_file_path.read_text(), working_dir=est_file_path.parent, variable_name='not_found')
 
-    est = load_variable(est_file_path.read_text(), working_dir=est_file_path.parent)
+    est = load_variable(est_file_path.read_text(), working_dir=est_file_path.parent, variable_name='estimator')
     assert isinstance(est, JointEstimator)
 
 

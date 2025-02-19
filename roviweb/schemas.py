@@ -1,4 +1,8 @@
 """Data models for interacting with web service"""
+from typing import Callable
+
+import pandas as pd
+
 from pydantic import BaseModel
 
 
@@ -37,6 +41,21 @@ class EstimatorStatus(BaseModel):
     """Mean of the state estimates"""
     covariance: list[list[float]]
     """Covariance of the estimated states"""
+
+
+PrognosticsFunction = Callable[[pd.DataFrame, pd.DataFrame], pd.DataFrame]
+"""Interface for functions which predict future aSOH given past estimates"""
+
+
+class ForecasterInfo(BaseModel):
+    """Information about how to run the prognosis models"""
+
+    function: PrognosticsFunction
+    """Function to be invoked for inferring prognosis"""
+    sql_query: str
+    """Query used against the time series database to gather inference inputs"""
+    output_names: list[str] | None
+    """Names of the columns output by the estimator"""
 
 
 RecordType = dict[str, int | float | str]
