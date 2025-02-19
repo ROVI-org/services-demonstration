@@ -3,7 +3,7 @@ from typing import Callable
 
 import pandas as pd
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TableStats(BaseModel):
@@ -52,9 +52,9 @@ class ForecasterInfo(BaseModel):
 
     function: PrognosticsFunction
     """Function to be invoked for inferring prognosis"""
-    sql_query: str
+    sql_query: str = Field(pattern=r'(?:from|FROM) \$TABLE_NAME\$')
     """Query used against the time series database to gather inference inputs"""
-    output_names: list[str] | None
+    output_names: list[str] | None = None
     """Names of the columns output by the estimator"""
 
 

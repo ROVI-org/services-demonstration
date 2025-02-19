@@ -48,11 +48,11 @@ def list_forecasters() -> dict[str, ForecasterInfo]:
     return forecasters.copy()
 
 
-def register_forecaster(name: str, estimator: ForecasterInfo):
+def register_forecaster(name: str, forecaster: ForecasterInfo):
     """Add a new estimators to those being tracked by the web service
 
     Args:
         name: Name of the associated dataset
-        estimator: Estimator object
+        forecaster: Forecaster description object
     """
-    forecasters[name] = estimator
+    forecasters[name] = forecaster

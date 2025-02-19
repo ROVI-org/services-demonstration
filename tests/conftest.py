@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from roviweb.api import app
 from roviweb.online import estimators
+from roviweb.prognosis import forecasters
 from roviweb.db import connect, list_batteries
 
 _file_path = Path(__file__).parent / 'files'
@@ -47,6 +48,7 @@ def reset_status():
 
     conn.execute('DELETE FROM battery_metadata')
     estimators.clear()
+    forecasters.clear()
 
 
 @fixture()
