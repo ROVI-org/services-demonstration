@@ -11,9 +11,9 @@ dependencies:
 
   # Testing
   - pytest
-  - jupyterlab
 
   # Dependencies for projects not yet on conda
   - pip
   - pip:
+      - jupyterlab
       - -e .[test]

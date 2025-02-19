@@ -56,7 +56,7 @@ def test_with_data(client, add_data):
 def test_with_estimator(client, add_data, add_estimator):
     res = client.get('/dashboard/module')
     assert res.status_code == 200
-    assert 'r0.base_values' in res.text
+    assert 'q_t.base_values' in res.text
 
 
 def test_history_figure(client, add_data):

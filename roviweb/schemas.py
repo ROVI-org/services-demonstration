@@ -1,5 +1,9 @@
 """Data models for interacting with web service"""
-from pydantic import BaseModel
+from typing import Callable
+
+import pandas as pd
+
+from pydantic import BaseModel, Field
 
 
 class TableStats(BaseModel):
@@ -39,5 +43,32 @@ class EstimatorStatus(BaseModel):
     """Covariance of the estimated states"""
 
 
+PrognosticsFunction = Callable[[pd.DataFrame, pd.DataFrame], pd.DataFrame]
+"""Interface for functions which predict future aSOH given past estimates"""
+
+
+class ForecasterInfo(BaseModel):
+    """Information about how to run the prognosis models"""
+
+    function: PrognosticsFunction = Field(repr=False)
+    """Function to be invoked for inferring prognosis"""
+    sql_query: str = Field(pattern=r'(?:from|FROM) \$TABLE_NAME\$')
+    """Query used against the time series database to gather inference inputs"""
+    output_names: list[str] | None = None
+    """Names of the columns output by the estimator"""
+
+
 RecordType = dict[str, int | float | str]
 """Accepted format for DB records"""
+
+
+class LoadSpecification(BaseModel):
+    """Specification used for load forecasting
+
+    TBD: Convert prognostics models to use actual times
+    """
+
+    ahead_time: float = Field(gt=0)
+    """How much time to forecast ahead (units: timesteps)"""
+    resolution: float = Field(1, gt=0)
+    """Resolution at which to produce forecasts (units: timesteps)"""

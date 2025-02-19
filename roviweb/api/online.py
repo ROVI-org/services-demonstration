@@ -1,3 +1,4 @@
+"""Endpoints related to state estimation"""
 import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -5,7 +6,8 @@ from typing import Annotated
 
 from fastapi import Form, UploadFile, APIRouter
 
-from roviweb.online import load_estimator, EstimatorHolder, list_estimators, register_estimator
+from roviweb.online import EstimatorHolder, list_estimators, register_estimator
+from roviweb.utils import load_variable
 from roviweb.schemas import EstimatorStatus
 
 router = APIRouter()
@@ -33,7 +35,7 @@ async def upload_estimator(name: Annotated[str, Form()],
                 shutil.copyfileobj(file.file, fo)
 
         # Execute the function to create the estimator
-        estimator = load_estimator(definition, working_dir=td)
+        estimator = load_variable(definition, variable_name='estimator', working_dir=td)
 
         # Add it to the estimator collection
         register_estimator(name, EstimatorHolder(estimator=estimator, last_time=valid_time))
