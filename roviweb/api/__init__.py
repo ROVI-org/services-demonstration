@@ -1,4 +1,5 @@
 """Define the web application"""
+from typing import Annotated
 from pathlib import Path
 from io import StringIO
 import logging
@@ -7,13 +8,15 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl
 from matplotlib import pyplot as plt
-from fastapi import FastAPI, Request, HTTPException, Response
+from fastapi import FastAPI, Request, HTTPException, Response, Query
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.templating import Jinja2Templates
 
 from . import db, online, prognosis
 from ..db import connect, list_batteries
 from ..online import list_estimators
+from roviweb.prognosis import perform_prognosis, make_load_scenario
+from roviweb.schemas import LoadSpecification
 
 logger = logging.getLogger(__name__)
 mpl.use('Agg')
@@ -85,6 +88,51 @@ async def render_history(name):
         axs[1].plot(data['since_pres'], data['current'])
         axs[1].set_ylabel('Current (A)')
         axs[1].set_xlabel('Time (hr)')
+
+        fig.tight_layout()
+        io = StringIO()
+        fig.savefig(io, format='svg', dpi=320)
+        return Response(content=io.getvalue(), media_type='image/svg+xml')
+    finally:
+        plt.close(fig)
+
+
+@app.get("/dashboard/{name}/img/forecast.svg")
+async def render_forecast(name, load: Annotated[LoadSpecification, Query()]):
+    # Raise 404 if no such dataset
+    if name not in list_batteries():  # TODO: Make faster by just checking dataset
+        raise HTTPException(status_code=404, detail=f"No such dataset: {name}")
+    if name not in list_estimators():
+        raise HTTPException(status_code=404, detail=f"No health estimator for: {name}")
+    conn = connect()
+
+    # Get the entire history of the health estimates
+    asoh_est = conn.execute(f'SELECT * FROM {name}_estimates').df()
+
+    # Get the prognosis
+    forecast = None
+    try:
+        load_scn = make_load_scenario(load)
+        forecast = perform_prognosis(name, load_scn)
+        forecast = forecast.join(load_scn)
+        forecast['test_time'] += asoh_est['test_time'].max()
+    except BaseException:
+        logger.info('Failed to make forecasts')
+
+    # Make the figure
+    n_asoh = len(asoh_est.columns) - 1
+    fig, axs = plt.subplots(n_asoh // 2 + n_asoh % 2, 2, figsize=(6.5, 2 * n_asoh // 2), sharex=True, squeeze=False)
+    try:
+
+        for ax, col in zip(axs.flatten(), asoh_est.columns[1:]):
+            ax.plot(asoh_est['test_time'] / 3600 / 24, asoh_est[col], color='blue')
+            ax.set_title(col, fontsize=8, loc='left')
+
+            if forecast is not None and col in forecast:
+                ax.plot(forecast['test_time'] / 3600 / 24, forecast[col], color='red')
+
+        for ax in axs[-1, :]:
+            ax.set_xlabel('Time (d)')
 
         fig.tight_layout()
         io = StringIO()

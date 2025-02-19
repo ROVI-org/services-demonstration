@@ -17,7 +17,7 @@ def make_load_scenario(load_spec: LoadSpecification) -> pd.DataFrame:
     Returns:
         Load forecast to use in prognosis
     """
-    return pd.DataFrame({'time': np.arange(0, load_spec.ahead_time, load_spec.resolution)})
+    return pd.DataFrame({'test_time': np.arange(0, load_spec.ahead_time, load_spec.resolution)})
 
 
 def perform_prognosis(name: str, load_scenario: pd.DataFrame) -> pd.DataFrame:
@@ -36,6 +36,7 @@ def perform_prognosis(name: str, load_scenario: pd.DataFrame) -> pd.DataFrame:
     # Pull the required data
     query = forecaster.sql_query.replace('$TABLE_NAME$', f'{name}_estimates')
     input_data = connect().query(query).df()
+    print(input_data.tail(1))
 
     return forecaster.function(input_data, load_scenario)
 

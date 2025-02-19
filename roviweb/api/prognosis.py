@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 
 from fastapi import Form, UploadFile, APIRouter
-from pydantic import Field
+from fastapi.params import Query
 
 from roviweb.utils import load_variable
 from roviweb.schemas import ForecasterInfo, LoadSpecification
@@ -20,7 +20,7 @@ router = APIRouter()
 async def upload_forecaster(
         name: Annotated[str, Form()],
         definition: Annotated[str, Form()],
-        sql_query: Annotated[str, Field(pattern=r'SELECT[^;]+(?:from|FROM) \$TABLE_NAME\$'), Form()],
+        sql_query: Annotated[str, Form(pattern=r'SELECT[^;]+(?:from|FROM) \$TABLE_NAME\$')],
         files: list[UploadFile] = ()) -> str:
     """Register a prognosis tool to be used for a single data source
 
@@ -53,8 +53,8 @@ async def upload_forecaster(
     return str(forecaster)
 
 
-@router.post('/prognosis/{name}/run')
-def run_prognosis(name: str, data: LoadSpecification) -> dict[str, list[float]]:
+@router.get('/prognosis/{name}/run')
+def run_prognosis(name: str, data: Annotated[LoadSpecification, Query()]) -> dict[str, list[float]]:
     """Run prognosis for a certain system under user-defined load conditions
 
     Args:

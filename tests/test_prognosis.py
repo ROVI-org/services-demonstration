@@ -73,7 +73,11 @@ def test_run(forecast_fun, example_dataset, upload_estimator, client):
             row = example_dataset.tables['raw_data'].iloc[i]
             websocket.send_bytes(msgpack.packb(row.to_dict()))
 
-    reply = client.post('/prognosis/module/run', data=LoadSpecification(ahead_time=1000).model_dump_json())
+    reply = client.get('/prognosis/module/run', params=LoadSpecification(ahead_time=1000).model_dump())
     df = pd.DataFrame(reply.json())
     assert len(df) == 1000
     assert 'q_t__base_values' in df.columns
+
+    reply = client.get('/dashboard/module/img/forecast.svg', params=LoadSpecification(ahead_time=100000).model_dump())
+    assert reply.status_code == 200, reply.text
+    Path(__file__).parent.joinpath('views/forecast.svg').write_text(reply.text)
