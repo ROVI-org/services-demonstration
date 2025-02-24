@@ -14,7 +14,15 @@ import httpx
 from roviweb.schemas import EstimatorStatus, BatteryStats
 
 
-def upload_estimator(args):
+def upload_function(args, functionality: str, **kwargs):
+    """Upload a function to the web service
+
+    Keyword args are added as arguments to the form data
+
+    Args:
+        args: Arguments passed to the CLI
+        functionality: Name of the functionality
+    """
     pointers = []  # Holds pointers to files being sent
     try:
         # Open pointers to all files
@@ -25,17 +33,17 @@ def upload_estimator(args):
             pointers.append(fp)
             context_files.append(('files', (file.name, fp)))
 
-        # Read the in the estimator file
-        estimator = Path(args.py_file).read_text()
+        # Read the in the definition file
+        definition = Path(args.py_file).read_text()
 
         # Push to the web service
-        reply = httpx.post(f'{args.url}/online/register',
-                           data={'name': args.name, 'definition': estimator},
+        reply = httpx.post(f'{args.url}/{functionality}/register',
+                           data={'name': args.name, 'definition': definition, **kwargs},
                            files=context_files)
         if reply.status_code != 200:
             raise ValueError(f'Upload failed status_code={reply.status_code}. {reply.text}')
-        response = reply.json()
-        print(f'Received a {response} for data_source={args.name}')
+        response = reply.text
+        print(f'Uploaded a {functionality} tool for data_source={args.name}. Response={response}')
     finally:
         for pt in pointers:
             pt.close()
@@ -114,13 +122,29 @@ def main(args=None):
     subparser = subparsers.add_parser('status', help='Get application status')
     subparser.set_defaults(action=get_status)
 
-    subparser = subparsers.add_parser('register', help='Register a state estimator')
+    # Actions associated with diagnosis
+    diag_subparser = subparsers.add_parser('diagnosis', help='Functions associated with diagnosing battery health')
+    diag_subparsers = diag_subparser.add_subparsers(dest='action')
+
+    subparser = diag_subparsers.add_parser('register', help='Register a state estimator')
     subparser.add_argument('name', help='Name of the data source associated with this estimator')
     subparser.add_argument('py_file', help='Path to the python file containing estimator definition')
     subparser.add_argument('context_file', nargs='*', help='Paths to additional files needed for estimator definition')
     subparser.add_argument('--valid-time', default=0., type=float, help='Test time at which estimator is valid')
-    subparser.set_defaults(action=upload_estimator)
+    subparser.set_defaults(action=lambda x: upload_function(x, 'online'))
 
+    # Actions associated with prognosis
+    prog_subparser = subparsers.add_parser('prognosis', help='Functions for forecasting battery health')
+    prog_subparsers = prog_subparser.add_subparsers(dest='action')
+
+    subparser = prog_subparsers.add_parser('register', help='Register a health forecaster')
+    subparser.add_argument('name', help='Name of the data source associated with this estimator')
+    subparser.add_argument('py_file', help='Path to the python file containing forecast function definition')
+    subparser.add_argument('sql_query', help='Query used to get history used for prognosis')
+    subparser.add_argument('context_file', nargs='*', help='Paths to additional files needed for forecaster')
+    subparser.set_defaults(action=lambda x: upload_function(x, 'prognosis', sql_query=x.sql_query))
+
+    # Actions associated with data
     subparser = subparsers.add_parser('upload', help='Upload data from a battdat HDF5 file')
     subparser.add_argument('--max-to-upload', help='Maximum number of rows to upload',
                            default=None, type=int)

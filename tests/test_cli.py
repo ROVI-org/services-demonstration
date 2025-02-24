@@ -31,17 +31,17 @@ def test_help(capsys):
     with raises(SystemExit):
         main(['--url', 'testservice', '--help'])
     captured = capsys.readouterr()
-    assert 'Register a state estimator' in captured.out
+    assert 'Functions associated with diagnosing battery health' in captured.out
 
 
 def test_upload(file_path, capsys, example_h5):
     # Send a model in
     main([
-        'register', 'module',
+        'diagnosis', 'register', 'module',
         str(file_path / 'example-estimator.py'),
         str(file_path / 'initial-asoh.json')
     ])
-    assert 'Received a JointEstimator for data_source=module' in capsys.readouterr().out
+    assert 'for data_source=module. Response="JointEstimator"' in capsys.readouterr().out
 
     # Check if it's available
     main(['status'])
@@ -59,6 +59,15 @@ def test_upload(file_path, capsys, example_h5):
     # Print the status again
     main(['status'])
     assert '  module: 4' in capsys.readouterr().out
+
+
+def test_register_prognosis(file_path, capsys):
+    main([
+             'prognosis', 'register', 'module',
+             str(file_path / 'prognosis' / 'example-forecaster.py'),
+             'SELECT test_time, q_t__base_values FROM $TABLE_NAME$',
+         ] + list(map(str, file_path.joinpath('prognosis').glob('*.pkl'))))
+    assert 'for data_source=module. Response="sql_query' in capsys.readouterr().out
 
 
 def test_status(capsys):
