@@ -2,7 +2,6 @@
 import re
 from uuid import uuid4
 from typing import Dict
-from functools import cache
 
 from battdat.schemas import BatteryMetadata
 from duckdb import DuckDBPyConnection
@@ -19,10 +18,9 @@ _data_types_to_sql = {
 _name_re = re.compile(r'\w+$')
 
 
-@cache  # Only connect once per session
 def connect() -> DuckDBPyConnection:
     """Establish a connection to the data services"""
-    conn = duckdb.connect(":memory:")  # For now, just memory. No persistence between runs
+    conn = duckdb.connect("duck.db")  # For now, just memory. No persistence between runs
 
     # Establish the database if the table does not exist
     conn.execute((

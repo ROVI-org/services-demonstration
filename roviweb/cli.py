@@ -76,11 +76,28 @@ def get_status(args):
         print(f'  Latest time: {info.latest_time:.2f} s')
 
 
-def upload_data(args):
+def print_status(args):
+    # Pull status from the service
+    est_status = httpx.get(f'{args.url}/online/status').json()
+    if args.name not in est_status:
+        return
+    est_status = EstimatorStatus.model_validate(est_status[args.name])
+
+    print(f'Estimator status at test_time: {est_status.latest_time:.1f} s:')
+    state = pd.DataFrame({
+        'name': est_status.state_names,
+        'mean': est_status.mean,
+        'std.': np.sqrt(np.diag(est_status.covariance))
+    })
+    print(state.to_string(index=False))
+
+
+def stream_data(args):
+    dataset = BatteryDataset.from_hdf(args.path)
+    print(f'Beginning to stream data for {args.name}')
+
     with connect_ws(f'{args.url}/db/upload/{args.name}') as ws:
         # Start sending data
-        dataset = BatteryDataset.from_hdf(args.path)
-        print(f'Beginning to stream data for {args.name}')
         last_time = None
         for i, row in dataset.tables['raw_data'].iterrows():
             # Pause to simulate data being acquired at known rates
@@ -96,19 +113,23 @@ def upload_data(args):
 
             # Print estimator status if we hit a marker
             if args.report_freq is not None and int(str(i)) % args.report_freq == 0:
-                # Pull status from the service
-                est_status = httpx.get(f'{args.url}/online/status').json()
-                if args.name not in est_status:
-                    continue
-                est_status = EstimatorStatus.model_validate(est_status[args.name])
+                print_status(args)
 
-                print(f'Estimator status at test_time: {est_status.latest_time:.1f} s:')
-                state = pd.DataFrame({
-                    'name': est_status.state_names,
-                    'mean': est_status.mean,
-                    'std.': np.sqrt(np.diag(est_status.covariance))
-                })
-                print(state.to_string(index=False))
+
+def upload_data(args):
+    # Load the data to be uploaded
+    dataset = BatteryDataset.from_hdf(args.path)
+    to_upload = dataset.tables['raw_data']
+    if args.max_to_upload is not None:
+        to_upload = to_upload.head(args.max_to_upload)
+
+    # Send it in chunks based on the report freq
+    num_chunks = len(to_upload) // args.report_freq + 1
+    for chunk in np.array_split(to_upload, num_chunks):
+        reply = httpx.post(f'{args.url}/db/upload/{args.name}', data=chunk.to_json(orient='records'))
+        if reply.json() != len(chunk):
+            raise ValueError(f'Upload failed: {reply.text}')
+        print_status(args)
 
 
 def main(args=None):
@@ -155,7 +176,7 @@ def main(args=None):
                                 ' Uploads as fast as possible as the default', default=None, type=float)
     subparser.add_argument('name', help='Name of the data source to create')
     subparser.add_argument('path', help='Path to the HDF5 file')
-    subparser.set_defaults(action=upload_data)
+    subparser.set_defaults(action=lambda x: upload_data(x) if x.clock_factor is None else stream_data(x))
 
     args = parser.parse_args(args)
 
