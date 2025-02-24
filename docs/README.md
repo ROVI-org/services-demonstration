@@ -4,9 +4,10 @@ The services demo is designed to run on a single computer.
 Run it in a series of steps.
 
 1. Start the web service
-2. Register a online estimator 
-3. Stream data
-4. Monitor progress
+2. Register a online estimator
+3. Register a forecaster
+4. Stream data
+5. Monitor progress
 
 ## Start Web Service
 
@@ -30,16 +31,32 @@ Supply an estimator by posting...
 - The name of the associated system
 - The test time at which the parameter estimates are valid
 - A Python file which creates a [Moirae `OnlineEstimator`](https://rovi-org.github.io/auto-soh/estimators/index.html#online-estimators)
-and the name of a module (to be defined later).
 
 Register by calling a CLI tool which POSTs a request to the proper URL.
 
 ```commandline
-rovicli register module estimator.py initial-asoh.json
+rovicli diagnosis register module estimator.py initial-asoh.json
 ```
 
 The registration process will create a callback that updates the estimator each
 time data from the associated system is received.
+
+## Register an Forecaster
+
+Forecasts prognose the future health of a battery under a specific load profile.
+As with the Estimators, register one by posting...
+
+- The name of the associated system
+- A Python file which creates a function that takes health history and load forecast, 
+  and produces a future estimate.
+- An SQL query for gathering data needed for forecast
+- Any files needed to create the function (e.g., machine learning model weights)
+
+Register by calling a CLI tool which POSTs a request to the proper URL.
+
+```commandline
+rovicli prognosis module forecaster.py "SELECT q_t__base_values FROM $TABLE_NAME$ ORDER BY test_time DESC LIMIT 10000" weights.pkl
+```
 
 ## Stream Data
 
@@ -54,7 +71,8 @@ Use an API tool provided with this web service to upload.
 rovicli upload module module.h5
 ```
 
-The CLI will send data points to the web service at a rate proportional to how they were initially collected.
+The CLI will first register metadata for the cell 
+then send data points to the web service at a rate proportional to how they were initially collected.
 For example, data originally acquired every minute will be sent to the web service every minute.
 The  `--speedup` command line argument will shorten the interval between data points by a constant factor.
 

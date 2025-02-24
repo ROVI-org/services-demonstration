@@ -8,9 +8,9 @@ from battdat.schemas import BatteryMetadata
 from fastapi import APIRouter
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
-from roviweb.db import register_data_source, write_record, register_battery, list_batteries
-from roviweb.schemas import BatteryStats
-from ..online import list_estimators
+from roviweb.db import register_data_source, write_one_record, register_battery, list_batteries, write_records
+from roviweb.schemas import BatteryStats, RecordType
+from ..online import update_estimator
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -30,7 +30,7 @@ def register_data(metadata: BatteryMetadata) -> str:
 
 
 @router.websocket('/db/upload/{name}')
-async def upload_data(name: str, socket: WebSocket):
+async def stream_data(name: str, socket: WebSocket):
     """Open a socket connection for writing data to the database
 
     Messages are the data to be stored in `msgpack <https://pypi.org/project/msgpack/>`_ format.
@@ -56,23 +56,12 @@ async def upload_data(name: str, socket: WebSocket):
 
         # Continue to write rows until disconnect
         #  TODO (wardlt): Batch writes
-        state_db_ready = False
         while True:
-            # Increment and store estimator
-            if (holder := list_estimators().get(name)) is not None:
-                holder.step(record)
-                state_record = {'test_time': record['test_time']}
-                for vname, val in zip(holder.estimator.state_names, holder.estimator.state.get_mean()):
-                    state_record[vname.replace(".", "__").replace("[", "").replace("]", "")] = val
-
-                db_name = f'{name}_estimates'
-                if not state_db_ready:
-                    state_db_map = register_data_source(db_name, state_record)
-                    state_db_ready = True
-                write_record(db_name, state_db_map, state_record)
-
             # Write to database
-            write_record(name, type_map, record)
+            write_one_record(name, type_map, record)
+
+            # Update the estimator
+            update_estimator(name)
 
             # Get next step
             msg = await socket.receive_bytes()
@@ -80,6 +69,29 @@ async def upload_data(name: str, socket: WebSocket):
             record['received'] = datetime.now().timestamp()
     except WebSocketDisconnect:
         logger.info(f'Disconnected from client at {socket.client.host}')
+
+
+@router.post('/db/upload/{name}')
+def upload_data(name: str, records: list[RecordType]) -> int:
+    """Bulk upload data
+
+    Args:
+        name: Name of the dataset
+        records: Records to be uploaded
+    Returns:
+        Number of records processed
+    """
+
+    if len(records) == 0:
+        return 0
+
+    # Register the data source then insert
+    type_map = register_data_source(name, records[0])
+    write_records(name, type_map, records)
+
+    # Update the estimator
+    update_estimator(name)
+    return len(records)
 
 
 @router.get('/db/stats')

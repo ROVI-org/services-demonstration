@@ -47,9 +47,14 @@ def forecast(input_df: pd.DataFrame, load_scenario: pd.DataFrame) -> pd.DataFram
     model_parameters = model_parameters[1:round(model_parameters[0]) + 2]
 
     # Make the forecast given the input data frame and predicted outputs
+    #  TODO (wardlt): Use the test times from the load scenario
     forecast_len = len(input_df) + len(load_scenario)
     x = np.linspace(0, forecast_len, forecast_len)
     forecast_vals = np.abs(poly(x, model_parameters))
-    forecast_vals = pd.Series(forecast_vals)
+    forecast_vals = pd.Series(forecast_vals[len(input_df):])
 
-    return pd.DataFrame({'q_t__base_values': forecast_vals[len(input_df):]})
+    test_times = x * input_df['test_time'].diff()[1:].mean().item()
+    test_times = test_times[len(input_df):]
+    test_times -= test_times.min()
+    return pd.DataFrame({'test_time': test_times,
+                         'q_t__base_values': forecast_vals})

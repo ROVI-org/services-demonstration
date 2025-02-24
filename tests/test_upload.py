@@ -13,6 +13,13 @@ def test_upload(client):
     assert stats['module']['data_stats']['columns'] == {'a': 'INTEGER', 'b': 'FLOAT', 'received': 'FLOAT'}
 
 
+def test_upload_bulk(client):
+    records = [{'a': 1, 'b': 1}]
+
+    assert client.post('/db/upload/module', json=[]).json() == 0
+    assert client.post('/db/upload/module', json=records).json() == 1
+
+
 def test_upload_metadata(client, example_dataset):
     res = client.post('/db/register', content=example_dataset.metadata.model_dump_json())
     assert res.status_code == 200

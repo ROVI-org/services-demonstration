@@ -5,6 +5,7 @@ from moirae.interface import row_to_inputs
 from moirae.estimators.online import OnlineEstimator
 from moirae.models.base import InputQuantities
 
+from roviweb.db import register_data_source, connect, write_records
 from roviweb.schemas import RecordType
 
 
@@ -58,3 +59,40 @@ def register_estimator(name: str, estimator: EstimatorHolder):
         estimator: Estimator object
     """
     estimators[name] = estimator
+
+
+def update_estimator(name: str, missing_ok: bool = True) -> EstimatorHolder | None:
+    """Update an estimator with the latest data, record in DB
+
+    Args:
+        name: Name of the associated dataset
+        missing_ok: Whether to error if there is no estimator available
+    Returns:
+        The latest copy of the estimator
+    """
+
+    # Crash if no such estimator
+    missing = name not in estimators
+    if missing and not missing_ok:
+        raise ValueError(f'No estimator associated with: {name}')
+    elif missing:
+        return None
+
+    # Update using the most recent data
+    holder = estimators[name]
+    conn = connect()
+    new_data = conn.execute(f'SELECT * FROM {name} WHERE test_time >= $1 ORDER BY test_time ASC',
+                            [holder.last_time]).df()
+    new_records = []
+    for _, record in new_data.iterrows():
+        holder.step(record)
+        holder.last_time = record['test_time']
+        state_record = {'test_time': record['test_time']}
+        for vname, val in zip(holder.estimator.state_names, holder.estimator.state.get_mean()):
+            state_record[vname.replace(".", "__").replace("[", "").replace("]", "")] = val
+        new_records.append(state_record)
+
+    # Store the results in a database
+    db_name = f'{name}_estimates'
+    state_db_map = register_data_source(db_name, new_records[0])
+    write_records(db_name, state_db_map, new_records)

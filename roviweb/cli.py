@@ -14,7 +14,15 @@ import httpx
 from roviweb.schemas import EstimatorStatus, BatteryStats
 
 
-def upload_estimator(args):
+def upload_function(args, functionality: str, **kwargs):
+    """Upload a function to the web service
+
+    Keyword args are added as arguments to the form data
+
+    Args:
+        args: Arguments passed to the CLI
+        functionality: Name of the functionality
+    """
     pointers = []  # Holds pointers to files being sent
     try:
         # Open pointers to all files
@@ -25,17 +33,17 @@ def upload_estimator(args):
             pointers.append(fp)
             context_files.append(('files', (file.name, fp)))
 
-        # Read the in the estimator file
-        estimator = Path(args.py_file).read_text()
+        # Read the in the definition file
+        definition = Path(args.py_file).read_text()
 
         # Push to the web service
-        reply = httpx.post(f'{args.url}/online/register',
-                           data={'name': args.name, 'definition': estimator},
+        reply = httpx.post(f'{args.url}/{functionality}/register',
+                           data={'name': args.name, 'definition': definition, **kwargs},
                            files=context_files)
         if reply.status_code != 200:
             raise ValueError(f'Upload failed status_code={reply.status_code}. {reply.text}')
-        response = reply.json()
-        print(f'Received a {response} for data_source={args.name}')
+        response = reply.text
+        print(f'Uploaded a {functionality} tool for data_source={args.name}. Response={response}')
     finally:
         for pt in pointers:
             pt.close()
@@ -68,11 +76,28 @@ def get_status(args):
         print(f'  Latest time: {info.latest_time:.2f} s')
 
 
-def upload_data(args):
+def print_status(args):
+    # Pull status from the service
+    est_status = httpx.get(f'{args.url}/online/status').json()
+    if args.name not in est_status:
+        return
+    est_status = EstimatorStatus.model_validate(est_status[args.name])
+
+    print(f'Estimator status at test_time: {est_status.latest_time:.1f} s:')
+    state = pd.DataFrame({
+        'name': est_status.state_names,
+        'mean': est_status.mean,
+        'std.': np.sqrt(np.diag(est_status.covariance))
+    })
+    print(state.to_string(index=False))
+
+
+def stream_data(args):
+    dataset = BatteryDataset.from_hdf(args.path)
+    print(f'Beginning to stream data for {args.name}')
+
     with connect_ws(f'{args.url}/db/upload/{args.name}') as ws:
         # Start sending data
-        dataset = BatteryDataset.from_hdf(args.path)
-        print(f'Beginning to stream data for {args.name}')
         last_time = None
         for i, row in dataset.tables['raw_data'].iterrows():
             # Pause to simulate data being acquired at known rates
@@ -88,19 +113,23 @@ def upload_data(args):
 
             # Print estimator status if we hit a marker
             if args.report_freq is not None and int(str(i)) % args.report_freq == 0:
-                # Pull status from the service
-                est_status = httpx.get(f'{args.url}/online/status').json()
-                if args.name not in est_status:
-                    continue
-                est_status = EstimatorStatus.model_validate(est_status[args.name])
+                print_status(args)
 
-                print(f'Estimator status at test_time: {est_status.latest_time:.1f} s:')
-                state = pd.DataFrame({
-                    'name': est_status.state_names,
-                    'mean': est_status.mean,
-                    'std.': np.sqrt(np.diag(est_status.covariance))
-                })
-                print(state.to_string(index=False))
+
+def upload_data(args):
+    # Load the data to be uploaded
+    dataset = BatteryDataset.from_hdf(args.path)
+    to_upload = dataset.tables['raw_data']
+    if args.max_to_upload is not None:
+        to_upload = to_upload.head(args.max_to_upload)
+
+    # Send it in chunks based on the report freq
+    num_chunks = len(to_upload) // args.report_freq + 1
+    for chunk in np.array_split(to_upload, num_chunks):
+        reply = httpx.post(f'{args.url}/db/upload/{args.name}', data=chunk.to_json(orient='records'))
+        if reply.json() != len(chunk):
+            raise ValueError(f'Upload failed: {reply.text}')
+        print_status(args)
 
 
 def main(args=None):
@@ -114,13 +143,29 @@ def main(args=None):
     subparser = subparsers.add_parser('status', help='Get application status')
     subparser.set_defaults(action=get_status)
 
-    subparser = subparsers.add_parser('register', help='Register a state estimator')
+    # Actions associated with diagnosis
+    diag_subparser = subparsers.add_parser('diagnosis', help='Functions associated with diagnosing battery health')
+    diag_subparsers = diag_subparser.add_subparsers(dest='action')
+
+    subparser = diag_subparsers.add_parser('register', help='Register a state estimator')
     subparser.add_argument('name', help='Name of the data source associated with this estimator')
     subparser.add_argument('py_file', help='Path to the python file containing estimator definition')
     subparser.add_argument('context_file', nargs='*', help='Paths to additional files needed for estimator definition')
     subparser.add_argument('--valid-time', default=0., type=float, help='Test time at which estimator is valid')
-    subparser.set_defaults(action=upload_estimator)
+    subparser.set_defaults(action=lambda x: upload_function(x, 'online'))
 
+    # Actions associated with prognosis
+    prog_subparser = subparsers.add_parser('prognosis', help='Functions for forecasting battery health')
+    prog_subparsers = prog_subparser.add_subparsers(dest='action')
+
+    subparser = prog_subparsers.add_parser('register', help='Register a health forecaster')
+    subparser.add_argument('name', help='Name of the data source associated with this estimator')
+    subparser.add_argument('py_file', help='Path to the python file containing forecast function definition')
+    subparser.add_argument('sql_query', help='Query used to get history used for prognosis')
+    subparser.add_argument('context_file', nargs='*', help='Paths to additional files needed for forecaster')
+    subparser.set_defaults(action=lambda x: upload_function(x, 'prognosis', sql_query=x.sql_query))
+
+    # Actions associated with data
     subparser = subparsers.add_parser('upload', help='Upload data from a battdat HDF5 file')
     subparser.add_argument('--max-to-upload', help='Maximum number of rows to upload',
                            default=None, type=int)
@@ -131,7 +176,7 @@ def main(args=None):
                                 ' Uploads as fast as possible as the default', default=None, type=float)
     subparser.add_argument('name', help='Name of the data source to create')
     subparser.add_argument('path', help='Path to the HDF5 file')
-    subparser.set_defaults(action=upload_data)
+    subparser.set_defaults(action=lambda x: upload_data(x) if x.clock_factor is None else stream_data(x))
 
     args = parser.parse_args(args)
 
