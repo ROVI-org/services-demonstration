@@ -8,8 +8,8 @@ from battdat.schemas import BatteryMetadata
 from fastapi import APIRouter
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
-from roviweb.db import register_data_source, write_one_record, register_battery, list_batteries
-from roviweb.schemas import BatteryStats
+from roviweb.db import register_data_source, write_one_record, register_battery, list_batteries, write_records
+from roviweb.schemas import BatteryStats, RecordType
 from ..online import update_estimator
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ def register_data(metadata: BatteryMetadata) -> str:
 
 
 @router.websocket('/db/upload/{name}')
-async def upload_data(name: str, socket: WebSocket):
+async def stream_data(name: str, socket: WebSocket):
     """Open a socket connection for writing data to the database
 
     Messages are the data to be stored in `msgpack <https://pypi.org/project/msgpack/>`_ format.
@@ -69,6 +69,29 @@ async def upload_data(name: str, socket: WebSocket):
             record['received'] = datetime.now().timestamp()
     except WebSocketDisconnect:
         logger.info(f'Disconnected from client at {socket.client.host}')
+
+
+@router.post('/db/upload/{name}')
+def upload_data(name: str, records: list[RecordType]) -> int:
+    """Bulk upload data
+
+    Args:
+        name: Name of the dataset
+        records: Records to be uploaded
+    Returns:
+        Number of records processed
+    """
+
+    if len(records) == 0:
+        return 0
+
+    # Register the data source then insert
+    type_map = register_data_source(name, records[0])
+    write_records(name, type_map, records)
+
+    # Update the estimator
+    update_estimator(name)
+    return len(records)
 
 
 @router.get('/db/stats')
