@@ -36,7 +36,7 @@ def perform_prognosis(name: str, load_scenario: pd.DataFrame) -> pd.DataFrame:
     # Pull the required data
     query = forecaster.sql_query.replace('$TABLE_NAME$', f'{name}_estimates')
     input_data = connect().query(query).df()
-    print(input_data.tail(1))
+    input_data = input_data.loc[reversed(input_data.index)]  # Dataframe is returned backwards
 
     return forecaster.function(input_data, load_scenario)
 

@@ -11,7 +11,7 @@ from roviweb.utils import load_variable
 from roviweb.schemas import PrognosticsFunction, ForecasterInfo, LoadSpecification
 from roviweb.prognosis import register_forecaster, list_forecasters
 
-_my_query = 'SELECT q_t__base_values FROM $TABLE_NAME$ ORDER BY test_time DESC LIMIT 10000'
+_my_query = 'SELECT test_time,q_t__base_values FROM $TABLE_NAME$ ORDER BY test_time DESC LIMIT 10000'
 
 
 @fixture()
@@ -78,6 +78,6 @@ def test_run(forecast_fun, example_dataset, upload_estimator, client):
     assert len(df) == 1000
     assert 'q_t__base_values' in df.columns
 
-    reply = client.get('/dashboard/module/img/forecast.svg', params=LoadSpecification(ahead_time=100000).model_dump())
+    reply = client.get('/dashboard/module/img/forecast.svg', params=LoadSpecification(ahead_time=10000).model_dump())
     assert reply.status_code == 200, reply.text
     Path(__file__).parent.joinpath('views/forecast.svg').write_text(reply.text)

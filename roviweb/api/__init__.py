@@ -114,10 +114,10 @@ async def render_forecast(name, load: Annotated[LoadSpecification, Query()]):
     try:
         load_scn = make_load_scenario(load)
         forecast = perform_prognosis(name, load_scn)
-        forecast = forecast.join(load_scn)
+        forecast = forecast.join(load_scn.drop(columns=['test_time']))
         forecast['test_time'] += asoh_est['test_time'].max()
-    except BaseException:
-        logger.info('Failed to make forecasts')
+    except BaseException as e:
+        print(f'Failed to make forecasts due to: {e}')
 
     # Make the figure
     n_asoh = len(asoh_est.columns) - 1
