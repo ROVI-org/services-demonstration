@@ -26,7 +26,10 @@ def forecast_fun(forecast_path) -> PrognosticsFunction:
 
 def test_load_then_execute(forecast_fun):
     output = forecast_fun(
-        pd.DataFrame({'q_t__base_values': np.random.normal(0.4, 0.005, size=(10000,))}),
+        pd.DataFrame({
+            'test_time': np.arange(10000),
+            'q_t__base_values': np.random.normal(0.4, 0.005, size=(10000,))
+        }),
         pd.DataFrame({'time': np.arange(200)})
     )
     assert len(output) == 200
