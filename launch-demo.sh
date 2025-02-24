@@ -12,6 +12,8 @@ start_chrome () {
   sleep 5
   google-chrome http://localhost:8000/
 }
+
+rm duck.db
 upload &
 start_chrome &
 uvicorn roviweb.api:app --workers 1
