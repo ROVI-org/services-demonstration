@@ -11,7 +11,6 @@ import duckdb
 import numpy as np
 
 from roviweb.schemas import TableStats, BatteryStats, RecordType
-from roviweb.online import list_estimators
 
 _data_types_to_sql = {
     'f': 'FLOAT',
@@ -64,6 +63,7 @@ def list_batteries() -> dict[str, TableStats]:
     no_metadata = conn.sql('SELECT name FROM battery_metadata WHERE metadata IS NULL').fetchall()
 
     # Get the stats for each dataset
+    from roviweb.online import list_estimators  # TODO (wardlt) Deal with this circular dep
     output = {}
     estimators = list_estimators()
     for name, in all_batteries:
@@ -92,12 +92,13 @@ def list_batteries() -> dict[str, TableStats]:
     return output
 
 
-def register_data_source(name: str, first_record: RecordType) -> Dict[str, str]:
+def register_data_source(name: str, first_record: RecordType, exists_ok=True) -> Dict[str, str]:
     """Create a new table in the database
 
     Args:
         name: Name used for the table
         first_record: First record for the database
+        exists_ok: Whether to exit cleanly if the DB exists
     Returns:
         Map of column names to SQL types
     """
@@ -107,22 +108,30 @@ def register_data_source(name: str, first_record: RecordType) -> Dict[str, str]:
     if not name.endswith('_estimates'):
         conn.execute('INSERT INTO battery_metadata VALUES (?, NULL) ON CONFLICT DO NOTHING;', [name])
 
-    # Determine the data types
-    col_types = {}
+    # Check if the DB exists
     if not _name_re.match(name):
         raise ValueError(f'Database name ("{name}") contains bad characters.')
+    exists = conn.execute(
+        'SELECT table_name FROM duckdb_tables() WHERE table_name = ?', [name]
+    ).fetchone() is not None
+    if exists and not exists_ok:
+        raise ValueError(f'Table already exists: {name}')
+
+    # Determine the data types
+    col_types = {}
     for key, value in first_record.items():
         if not _name_re.match(key):
             raise ValueError(f'Column name ("{key}") contains bad characters!')
         col_types[key] = _data_types_to_sql.get(np.array(value).dtype.kind, 'VARCHAR')
 
-    # Make the table
-    col_section = ",\n   ".join(f'{k} {v}' for k, v in col_types.items())
-    conn.execute(f'CREATE TABLE {name}( {col_section} );')
+    # Make the table if it doesn't exist yet
+    if not exists:
+        col_section = ",\n   ".join(f'{k} {v}' for k, v in col_types.items())
+        conn.execute(f'CREATE TABLE {name}( {col_section} );')
     return col_types
 
 
-def write_record(name: str, type_map: Dict[str, str], record: RecordType):
+def write_one_record(name: str, type_map: Dict[str, str], record: RecordType):
     """Write a series of records to a certain table
 
     Args:
@@ -131,8 +140,25 @@ def write_record(name: str, type_map: Dict[str, str], record: RecordType):
         record: Record to be written
     """
 
+    write_records(name, type_map, [record])
+
+
+def write_records(name: str, type_map: Dict[str, str], records: list[RecordType]):
+    """Write a series of records to a certain table
+
+    Args:
+        name: Name used for the table
+        type_map: Map of column name to expected type
+        records: Records to be written
+    """
+
     conn = connect()
-    conn.execute(
-        f'INSERT INTO {name} ({", ".join(record.keys())}) VALUES ({", ".join("?" * len(record))})',
-        [v if not type_map[k] == "VARCHAR" else str(v) for k, v in record.items()]
+    to_insert = []
+    for record in records:
+        to_insert.append([record[k] if not v == "VARCHAR" else str(record[k]) for k, v in type_map.items()])
+    if len(records) == 0:
+        return
+    conn.executemany(
+        f'INSERT INTO {name} ({", ".join(type_map.keys())}) VALUES ({", ".join("?" * len(type_map))})',
+        to_insert
     )
