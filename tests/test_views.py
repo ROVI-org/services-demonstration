@@ -2,7 +2,6 @@
 from pathlib import Path
 from shutil import rmtree
 
-from battdat.data import BatteryDataset
 from pytest import fixture
 import msgpack
 
@@ -13,7 +12,7 @@ _views_dir.mkdir(exist_ok=True)
 
 @fixture()
 def add_data(client, example_dataset):
-    res = client.post('/db/register', content=example_dataset.metadata.model_dump_json())
+    client.post('/db/register', content=example_dataset.metadata.model_dump_json())
     name = example_dataset.metadata.name
     with client.websocket_connect(f"/db/upload/{name}") as websocket:
         # Send 16 data points

@@ -78,15 +78,6 @@ def test_register_prognosis(file_path, capsys):
     assert 'for data_source=module. Response="sql_query' in capsys.readouterr().out
 
 
-def test_register_prognosis(file_path, capsys):
-    main([
-             'prognosis', 'register', 'module',
-             str(file_path / 'prognosis' / 'example-forecaster.py'),
-             'SELECT test_time, q_t__base_values FROM $TABLE_NAME$',
-         ] + list(map(str, file_path.joinpath('prognosis').glob('*.pkl'))))
-    assert 'for data_source=module. Response="sql_query' in capsys.readouterr().out
-
-
 def test_status(capsys):
     main(['status'])
     assert 'No batteries available' in capsys.readouterr().out
