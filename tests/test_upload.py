@@ -1,3 +1,4 @@
+from roviweb.db import get_metadata
 import msgpack
 
 
@@ -30,3 +31,6 @@ def test_upload_metadata(client, example_dataset):
     assert stats[name]['has_metadata']
     assert not stats[name]['has_estimator']
     assert not stats[name]['has_data']
+
+    metadata = get_metadata(name)
+    assert metadata.name == name

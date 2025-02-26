@@ -52,6 +52,22 @@ def register_battery(metadata: BatteryMetadata) -> str:
     return name
 
 
+def get_metadata(name: str) -> BatteryMetadata:
+    """Retrieve the metadata associated with a battery
+
+    Args:
+        name: Name of the data source
+    Returns:
+        Metadata in battery-data-toolkit format
+    """
+
+    conn = connect()
+    as_json = conn.execute('SELECT metadata FROM battery_metadata WHERE name == ?', [name]).fetchone()[0]
+    if as_json is None:
+        raise ValueError(f'No metadata for {name}')
+    return BatteryMetadata.model_validate_json(as_json)
+
+
 def list_batteries() -> dict[str, TableStats]:
     """Retrieve information about what data are stored"""
     conn = connect()
