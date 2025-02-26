@@ -36,21 +36,26 @@ def test_help(capsys):
 
 @mark.parametrize('clock_factor', [None, '1e6'])
 def test_upload(file_path, capsys, example_h5, clock_factor):
+    # Register metadata
+    main(['register', str(example_h5)])
+    out = capsys.readouterr()
+    name = out.out.strip()
+    assert name.startswith('CAMP')
+
     # Send a model in
     main([
-        'diagnosis', 'register', 'module',
+        'diagnosis', 'register', name,
         str(file_path / 'example-estimator.py'),
         str(file_path / 'initial-asoh.json')
     ])
-    assert 'for data_source=module. Response="JointEstimator"' in capsys.readouterr().out
-
+    assert f'for data_source={name}. Response="JointEstimator"' in capsys.readouterr().out
     # Check if it's available
     main(['status'])
-    assert 'Estimator for module:' in capsys.readouterr().out
+    assert f'Estimator for {name}:' in capsys.readouterr().out
 
     # Send 4 steps of data
     main([
-             'upload', 'module',
+             'upload', name,
              '--max-to-upload', '4',
          ] + (
              [] if clock_factor is None else ['--clock-factor', clock_factor]
@@ -61,7 +66,7 @@ def test_upload(file_path, capsys, example_h5, clock_factor):
 
     # Print the status again
     main(['status'])
-    assert '  module: 4' in capsys.readouterr().out
+    assert f'  {name}: 4' in capsys.readouterr().out
 
 
 def test_register_prognosis(file_path, capsys):

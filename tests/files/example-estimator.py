@@ -19,10 +19,12 @@ initial_asoh.ocv.ocv_ref.interpolation_style = 'linear'
 
 # Make it so the capacity will be estimated
 initial_asoh.mark_updatable('q_t.base_values')
+initial_asoh.mark_updatable('r0.base_values')
 
 # Uncertainties for the parameters
 # For A-SOH, assume 2*standard_dev is 0.5% of the value of the parameter
 asoh_covariance = [(2.5e-03 * initial_asoh.q_t.base_values.item()) ** 2]  # +/- std_dev^2 Qt
+asoh_covariance += ((2.5e-03 * initial_asoh.r0.base_values.flatten()) ** 2).tolist()  # +/- std_dev^2 of R0
 asoh_covariance = np.diag(asoh_covariance)
 
 # For the transients, assume SOC is a uniform random variable in [0,1], and hysteresis has 2*std_dev of 1 mV

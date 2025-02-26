@@ -6,6 +6,20 @@
 
 <p>The battery status information for a cell named "{{name}}".</p>
 
+<h2>System Information</h2>
+
+<p>System metadata reported by the user</p>
+
+<table class="table-sm">
+    <tbody>
+        <tr>
+            <th>Nominal Capacity</th><td>{{ "%.2f" | format(metadata.battery.nominal_capacity) }} A-hr</td>
+            <th>Cathode</th><td>{{metadata.battery.cathode.name}}</td>
+            <th>Anode</th><td>{{metadata.battery.anode.name}}</td>
+        </tr>
+    </tbody>
+</table>
+
 <h2>System Health</h2>
 
 <p>A picture of the current health and the history over time.</p>

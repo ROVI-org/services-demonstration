@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.templating import Jinja2Templates
 
 from . import db, online, prognosis
-from ..db import connect, list_batteries
+from ..db import connect, list_batteries, get_metadata
 from ..online import list_estimators
 from roviweb.prognosis import perform_prognosis, make_load_scenario
 from roviweb.schemas import LoadSpecification
@@ -58,8 +58,10 @@ async def dashboard(request: Request, name: str):
             'std': np.sqrt(np.diag(est_state.get_covariance()))
         })
 
+    # Get the metadata
+    metadata = get_metadata(name)
     return templates.TemplateResponse(
-        request=request, name="status.html", context={'name': name, 'table': table}
+        request=request, name="status.html", context={'name': name, 'table': table, 'metadata': metadata}
     )
 
 

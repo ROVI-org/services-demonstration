@@ -132,6 +132,13 @@ def upload_data(args):
         print_status(args)
 
 
+def register_metadata(args):
+    """Upload the metadata"""
+    metadata = BatteryDataset.get_metadata_from_hdf5(args.path)
+    result = httpx.post(f'{args.url}/db/register', content=metadata.model_dump_json())
+    print(result.json())
+
+
 def main(args=None):
     """Main entry point"""
 
@@ -164,6 +171,11 @@ def main(args=None):
     subparser.add_argument('sql_query', help='Query used to get history used for prognosis')
     subparser.add_argument('context_file', nargs='*', help='Paths to additional files needed for forecaster')
     subparser.set_defaults(action=lambda x: upload_function(x, 'prognosis', sql_query=x.sql_query))
+
+    # Actions associated with metadata
+    subparser = subparsers.add_parser('register', help='Register metadata for a cell')
+    subparser.add_argument('path', help='Path to the H5 file holding the metadata')
+    subparser.set_defaults(action=register_metadata)
 
     # Actions associated with data
     subparser = subparsers.add_parser('upload', help='Upload data from a battdat HDF5 file')
