@@ -1,7 +1,7 @@
 """Utility operations for working with the DuckDB"""
 import re
 from uuid import uuid4
-from typing import Dict
+from typing import Dict, Optional
 
 from battdat.schemas import BatteryMetadata
 from duckdb import DuckDBPyConnection
@@ -31,17 +31,19 @@ def connect() -> DuckDBPyConnection:
     return conn
 
 
-def register_battery(metadata: BatteryMetadata) -> str:
+def register_battery(metadata: BatteryMetadata, name: Optional[str] = None) -> str:
     """Register a battery by providing its metadata
 
     Args:
         metadata: Metadata of a battery system
+        name: A name to use for the cell. Default to that in the metadata or a UUID4 if none provided
     Returns:
         The name to be used for the source
     """
 
     # Insert the metadata as a JSON object
-    name = metadata.name or uuid4()
+    if name is None:
+        name = metadata.name or uuid4()
     conn = connect()
 
     # Insert the data
