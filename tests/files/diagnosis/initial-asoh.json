@@ -51,7 +51,9 @@
  },
  "r0": {
   "updatable": [],
-  "base_values": [[0.05]],
+  "base_values": [[
+      0.05
+  ]],
   "soc_pinpoints": null,
   "interpolation_style": "linear",
   "reference_temperature": 25.0,

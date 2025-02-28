@@ -35,7 +35,7 @@ def test_help(capsys):
 
 
 @mark.parametrize('clock_factor', [None, '1e6'])
-def test_upload(file_path, capsys, example_h5, clock_factor):
+def test_upload(file_path, capsys, example_h5, clock_factor, est_file_path):
     # Register metadata
     main(['register', str(example_h5)])
     out = capsys.readouterr()
@@ -45,8 +45,8 @@ def test_upload(file_path, capsys, example_h5, clock_factor):
     # Send a model in
     main([
         'diagnosis', 'register', name,
-        str(file_path / 'example-estimator.py'),
-        str(file_path / 'initial-asoh.json')
+        str(est_file_path),
+        str(est_file_path.with_name('initial-asoh.json'))
     ])
     assert f'for data_source={name}. Response="JointEstimator"' in capsys.readouterr().out
     # Check if it's available
