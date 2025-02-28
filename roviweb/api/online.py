@@ -1,5 +1,4 @@
 """Endpoints related to state estimation"""
-import numpy as np
 import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -46,7 +45,7 @@ async def upload_estimator(name: Annotated[str, Form()],
             estimator_builder=estimator_maker,
             offline_estimator=offline_estimator,
             start_time=required_time,
-            last_time=-np.inf
+            last_time=-1,
         )
 
         # Make the estimator if no data are required
