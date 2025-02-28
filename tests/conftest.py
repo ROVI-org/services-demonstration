@@ -53,7 +53,7 @@ def reset_status():
 
 @fixture()
 def est_file_path():
-    return _file_path / 'example-estimator.py'
+    return _file_path / 'diagnosis' / 'example-estimator.py'
 
 
 @fixture()
@@ -61,5 +61,5 @@ def upload_estimator(est_file_path, client):
     """Register the online estimator"""
     with open(est_file_path.parent / 'initial-asoh.json', 'rb') as rb:
         return client.post('/online/register',
-                           data={'name': 'module', 'definition': est_file_path.read_text()},
+                           data={'name': 'module', 'definition': est_file_path.read_text(), 'start_time': 1.},
                            files=[('files', ('initial-asoh.json', rb))])

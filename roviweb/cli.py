@@ -158,8 +158,8 @@ def main(args=None):
     subparser.add_argument('name', help='Name of the data source associated with this estimator')
     subparser.add_argument('py_file', help='Path to the python file containing estimator definition')
     subparser.add_argument('context_file', nargs='*', help='Paths to additional files needed for estimator definition')
-    subparser.add_argument('--valid-time', default=0., type=float, help='Test time at which estimator is valid')
-    subparser.set_defaults(action=lambda x: upload_function(x, 'online'))
+    subparser.add_argument('--start-time', default=0., type=float, help='Time at which the estimator can be used')
+    subparser.set_defaults(action=lambda x: upload_function(x, 'online', start_time=args.start_time))
 
     # Actions associated with prognosis
     prog_subparser = subparsers.add_parser('prognosis', help='Functions for forecasting battery health')

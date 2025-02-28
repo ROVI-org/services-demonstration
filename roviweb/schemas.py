@@ -1,4 +1,5 @@
 """Data models for interacting with web service"""
+import numpy as np
 from typing import Callable
 
 import pandas as pd
@@ -33,13 +34,15 @@ class BatteryStats(BaseModel):
 class EstimatorStatus(BaseModel):
     """Condition and status of a state estimator"""
 
-    state_names: list[str]
+    is_ready: bool
+    """Whether we have acquired enough data to start estimation"""
+    state_names: list[str] = ()
     """Names of each of the state"""
-    latest_time: float
+    latest_time: float = np.nan
     """Test time to which state corresponds to"""
-    mean: list[float]
+    mean: list[float] = ()
     """Mean of the state estimates"""
-    covariance: list[list[float]]
+    covariance: list[list[float]] = ((),)
     """Covariance of the estimated states"""
 
 
