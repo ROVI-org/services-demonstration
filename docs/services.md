@@ -50,14 +50,18 @@ The `/online/register` creates a tool to estimate battery health and associates 
 We use the Moirae package for online state estimation, which describes state estimators as Python objects.
 As such, the endpoint requires the name of the data source and
 
-- A Python script which creates the estimator as a variable named `estimator`
+- A Python script which defines two functions:
+  - `perform_offline_estimation`: Takes a BatteryDataset as input, generates initial guesses for ASOH and transient state
+  - `make_estimator`: Takes initial guesses for ASOH and state, returns an OnlineEstimator
 - Any files which must be in the same directory as the Python script
+- Optionally: A minimum amount of data required to start estimation
 
 ### Estimator Status
 
 The `/online/status` endpoint prints the current estimates of battery health.
 Each record contains at least:
 
+- If an estimator is ready for use
 - The latest time at which the health was estimated
 - The names of every parameter being estimated
 - The mean and covariance of a probability distribution for the parameters
