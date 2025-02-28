@@ -69,6 +69,8 @@ def test_run(forecast_fun, example_dataset, upload_estimator, client):
     register_forecaster('module', info)
 
     # Upload a few steps of cycling data
+    example_dataset.metadata.name = 'module'
+    client.post('/db/register', content=example_dataset.metadata.model_dump_json())
     client.post('/db/upload/module', data=example_dataset.tables['raw_data'].head(10001).to_json(orient='records'))
 
     reply = client.get('/prognosis/module/run', params=LoadSpecification(ahead_time=1000).model_dump())

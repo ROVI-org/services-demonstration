@@ -53,7 +53,7 @@ def reset_status():
 
 @fixture()
 def est_file_path():
-    return _file_path / 'example-estimator.py'
+    return _file_path / 'diagnosis' / 'example-estimator.py'
 
 
 @fixture()

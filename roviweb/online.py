@@ -1,22 +1,33 @@
 """Functions for managing online estimation"""
+import logging
 import dataclasses
+from battdat.data import BatteryDataset, CellDataset
+from typing import Callable
 
 from moirae.interface import row_to_inputs
 from moirae.estimators.online import OnlineEstimator
-from moirae.models.base import InputQuantities
+from moirae.models.base import InputQuantities, HealthVariable, GeneralContainer
 
-from roviweb.db import register_data_source, connect, write_records
+from roviweb.db import register_data_source, connect, write_records, get_metadata
 from roviweb.schemas import RecordType
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
 class EstimatorHolder:
-    """Class which holds the estimator and data about its progress"""
+    """Class which holds tools to build an estimator, the estimator, and data about its progress"""
 
-    estimator: OnlineEstimator
-    """Estimator being propagated"""
+    offline_estimator: Callable[[BatteryDataset | None], tuple[HealthVariable, GeneralContainer]]
+    """Function which generates initial health and state estimates"""
+    estimator_builder: Callable[[HealthVariable, GeneralContainer], OnlineEstimator]
+    """Function which builds an estimator from initial health estimates"""
+    start_time: float
+    """Time at which enough data has been acquired to start estimation (units: s)"""
     last_time: float
-    """Test time at which the states are estimated"""
+    """Test time at which the states are estimated (units: s)"""
+    estimator: OnlineEstimator | None = None
+    """Estimator being propagated"""
     _last_inputs: InputQuantities | None = None
     """Inputs from the last step"""
 
@@ -71,15 +82,19 @@ def update_estimator(name: str, missing_ok: bool = True) -> EstimatorHolder | No
         The latest copy of the estimator
     """
 
-    # Crash if no such estimator
+    # Pull the estimator
     missing = name not in estimators
     if missing and not missing_ok:
         raise ValueError(f'No estimator associated with: {name}')
     elif missing:
         return None
+    holder = estimators[name]
+
+    # Build an estimator if none yet available
+    if holder.estimator is None and not build_estimator(name, holder):
+        return None
 
     # Update using the most recent data
-    holder = estimators[name]
     conn = connect()
     new_data = conn.execute(f'SELECT * FROM {name} WHERE test_time >= $1 ORDER BY test_time ASC',
                             [holder.last_time]).df()
@@ -96,3 +111,31 @@ def update_estimator(name: str, missing_ok: bool = True) -> EstimatorHolder | No
     db_name = f'{name}_estimates'
     state_db_map = register_data_source(db_name, new_records[0])
     write_records(db_name, state_db_map, new_records)
+
+
+def build_estimator(name: str, holder: EstimatorHolder) -> bool:
+    """Build a new estimator given what data are available in the database
+
+    Args:
+        name: Name of the associated dataset
+        holder: Toolset for building the estimator
+    Returns:
+        Whether the estimator was built
+    """
+
+    conn = connect()
+
+    # Check whether enough data are available
+    first_time, last_time = conn.execute(f'SELECT MIN(test_time),MAX(test_time) FROM {name}').fetchone()
+    if last_time - first_time < holder.start_time:
+        return False
+
+    # Pull the data and metadata
+    raw_data = conn.execute(f'SELECT * FROM {name} ORDER BY test_time ASC').df()
+    metadata = get_metadata(name)
+    dataset = CellDataset(raw_data=raw_data, metadata=metadata)
+
+    # Run offline estimation to get initial parameter guesses
+    init_asoh, init_state = holder.offline_estimator(dataset)
+    holder.estimator = holder.estimator_builder(init_asoh, init_state)
+    return True

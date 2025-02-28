@@ -1,4 +1,5 @@
-from moirae.estimators.online.joint import JointEstimator
+from typing import Callable
+
 from pytest import raises
 import msgpack
 
@@ -8,17 +9,21 @@ from roviweb.utils import load_variable
 def test_load(est_file_path):
     # Wrong directory
     with raises(FileNotFoundError, match='No such file'):
-        load_variable(est_file_path.read_text(), 'estimator')
+        load_variable(est_file_path.read_text(), 'make_estimator')
 
     # Wrong variable name
     with raises(ValueError, match='not_found'):
         load_variable(est_file_path.read_text(), working_dir=est_file_path.parent, variable_name='not_found')
 
-    est = load_variable(est_file_path.read_text(), working_dir=est_file_path.parent, variable_name='estimator')
-    assert isinstance(est, JointEstimator)
+    est = load_variable(est_file_path.read_text(), working_dir=est_file_path.parent, variable_name='make_estimator')
+    assert isinstance(est, Callable)
 
 
 def test_several_steps(client, example_dataset, est_file_path, upload_estimator):
+    # Register metadata
+    example_dataset.metadata.name = 'module'
+    client.post("/db/register", content=example_dataset.metadata.model_dump_json())
+
     # Upload a few steps of cycling data
     with client.websocket_connect("/db/upload/module") as websocket:
         # Send 4 data points
