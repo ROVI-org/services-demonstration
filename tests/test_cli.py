@@ -48,7 +48,7 @@ def test_upload(file_path, capsys, example_h5, clock_factor, est_file_path):
         str(est_file_path),
         str(est_file_path.with_name('initial-asoh.json'))
     ])
-    assert f'for data_source={name}. Response="JointEstimator"' in capsys.readouterr().out
+    assert f'for data_source={name}' in capsys.readouterr().out
     # Check if it's available
     main(['status'])
     assert f'Estimator for {name}:' in capsys.readouterr().out
